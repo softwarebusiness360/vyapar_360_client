@@ -17,9 +17,12 @@ export default function LoginPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      const v = login(email.trim(), password);
-      toast.success(`Welcome back, ${v.name || v.email}`);
-      nav(v.onboarded ? "/dashboard" : "/onboarding");
+      const { vendor, employee, role } = login(email.trim(), password);
+      const displayName = employee?.name || vendor?.name || vendor?.email;
+      toast.success(`Welcome back, ${displayName}`);
+      if (role === "employee") nav("/dashboard/pos");
+      else if (vendor?.onboarded) nav("/dashboard");
+      else nav("/onboarding");
     } catch (err) {
       toast.error(err.message || "Login failed");
     } finally {

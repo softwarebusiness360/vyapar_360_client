@@ -16,6 +16,9 @@ import OrdersPage from "./pages/vendor/OrdersPage";
 import BookingsPage from "./pages/vendor/BookingsPage";
 import StoreSettingsPage from "./pages/vendor/StoreSettingsPage";
 import InsightsPage from "./pages/vendor/InsightsPage";
+import TeamPage from "./pages/vendor/TeamPage";
+import StorefrontsPage from "./pages/vendor/StorefrontsPage";
+import POSPage from "./pages/vendor/POSPage";
 import DiscoverPage from "./pages/customer/DiscoverPage";
 import StorefrontPage from "./pages/customer/StorefrontPage";
 import CheckoutPage from "./pages/customer/CheckoutPage";
@@ -33,16 +36,18 @@ import AdminLandingCMSPage from "./pages/admin/AdminLandingCMSPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 function RequireAuth({ children, requireOnboarded = false }) {
-  const { vendor, loading } = useAuth();
+  const { vendor, employee, loading } = useAuth();
   if (loading) return null;
   if (!vendor) return <Navigate to="/login" replace />;
-  if (requireOnboarded && !vendor.onboarded) return <Navigate to="/onboarding" replace />;
+  // Employees skip onboarding gate (their owner has already onboarded the workspace)
+  if (requireOnboarded && !vendor.onboarded && !employee) return <Navigate to="/onboarding" replace />;
   return children;
 }
 
 function RedirectIfAuthed({ children }) {
-  const { vendor, loading } = useAuth();
+  const { vendor, employee, loading } = useAuth();
   if (loading) return null;
+  if (vendor && employee) return <Navigate to="/dashboard/pos" replace />;
   if (vendor && vendor.onboarded) return <Navigate to="/dashboard" replace />;
   if (vendor && !vendor.onboarded) return <Navigate to="/onboarding" replace />;
   return children;

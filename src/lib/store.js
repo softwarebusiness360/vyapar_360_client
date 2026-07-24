@@ -45,10 +45,67 @@ export const DEFAULT_BOOKING_FIELDS = {
 };
 
 function withDefaults(vendor) {
+  // Multi-storefront migration: if legacy vendor has top-level slug/name but no storefronts, wrap into storefronts[0].
+  let storefronts = vendor.storefronts;
+  if (!Array.isArray(storefronts) || storefronts.length === 0) {
+    if (vendor.slug || vendor.name) {
+      storefronts = [{
+        id: vendor._legacyStorefrontId || uid("sf"),
+        slug: vendor.slug,
+        name: vendor.name,
+        businessType: vendor.businessType,
+        tagline: vendor.tagline || "",
+        description: vendor.description || "",
+        logo: vendor.logo || "",
+        coverImage: vendor.coverImage || "",
+        address: vendor.address || "",
+        phone: vendor.phone || "",
+        accent: vendor.accent || (vendor.businessType === "salon" ? "salon" : "restaurant"),
+        categories: vendor.categories || [],
+        items: vendor.items || [],
+        services: vendor.services || [],
+        checkoutFields: { ...DEFAULT_CHECKOUT_FIELDS, ...(vendor.checkoutFields || {}) },
+        bookingFields: { ...DEFAULT_BOOKING_FIELDS, ...(vendor.bookingFields || {}) },
+        disabled: false,
+      }];
+    } else {
+      storefronts = [];
+    }
+  } else {
+    storefronts = storefronts.map((s) => ({
+      ...s,
+      checkoutFields: { ...DEFAULT_CHECKOUT_FIELDS, ...(s.checkoutFields || {}) },
+      bookingFields: { ...DEFAULT_BOOKING_FIELDS, ...(s.bookingFields || {}) },
+    }));
+  }
+  const defaultPlan = vendor.plan || "starter";
+  const defaultFeatures = {
+    multiStore: defaultPlan === "pro",
+    employees: defaultPlan === "pro" || defaultPlan === "growth",
+    ...(vendor.features || {}),
+  };
   return {
     ...vendor,
-    checkoutFields: { ...DEFAULT_CHECKOUT_FIELDS, ...(vendor.checkoutFields || {}) },
-    bookingFields: { ...DEFAULT_BOOKING_FIELDS, ...(vendor.bookingFields || {}) },
+    storefronts,
+    employees: vendor.employees || [],
+    plan: defaultPlan,
+    features: defaultFeatures,
+    // Keep back-compat facades for old code paths (mirror storefronts[0]):
+    checkoutFields: { ...DEFAULT_CHECKOUT_FIELDS, ...(storefronts[0]?.checkoutFields || vendor.checkoutFields || {}) },
+    bookingFields: { ...DEFAULT_BOOKING_FIELDS, ...(storefronts[0]?.bookingFields || vendor.bookingFields || {}) },
+    slug: vendor.slug || storefronts[0]?.slug,
+    name: vendor.name || storefronts[0]?.name,
+    businessType: vendor.businessType || storefronts[0]?.businessType,
+    logo: vendor.logo || storefronts[0]?.logo,
+    coverImage: vendor.coverImage || storefronts[0]?.coverImage,
+    tagline: vendor.tagline || storefronts[0]?.tagline,
+    description: vendor.description || storefronts[0]?.description,
+    address: vendor.address || storefronts[0]?.address,
+    phone: vendor.phone || storefronts[0]?.phone,
+    accent: vendor.accent || storefronts[0]?.accent,
+    categories: vendor.categories || storefronts[0]?.categories || [],
+    items: vendor.items || storefronts[0]?.items || [],
+    services: vendor.services || storefronts[0]?.services || [],
     disabled: vendor.disabled || false,
   };
 }
@@ -90,6 +147,8 @@ export function seedIfNeeded() {
     password: "demo1234",
     createdAt: now,
     onboarded: true,
+    plan: "pro",
+    features: { multiStore: true, employees: true },
     businessType: "restaurant",
     name: "Pizza Hub",
     slug: "pizza-hub",
@@ -184,6 +243,8 @@ export function seedIfNeeded() {
     password: "demo1234",
     createdAt: now,
     onboarded: true,
+    plan: "pro",
+    features: { multiStore: true, employees: true },
     businessType: "salon",
     name: "Style Salon",
     slug: "style-salon",
@@ -395,10 +456,6 @@ export function createVendor({ email, password }) {
   };
   saveVendor(v);
   return v;
-}
-export function slugAvailable(slug, exceptId = null) {
-  const s = slugify(slug);
-  return !getVendors().some((v) => v.slug === s && v.id !== exceptId);
 }
 
 /* --------------------------- Session ------------------------------ */
@@ -639,5 +696,159 @@ export function saveLandingConfig(cfg) {
 export function resetLandingConfig() {
   localStorage.removeItem(KEYS.landing);
   return DEFAULT_LANDING_CONFIG;
+}
+
+/* -------------------- Storefronts (multi-outlet) -------------------- */
+
+export function getStorefrontsForVendor(vendorId) {
+  const v = getVendorById(vendorId);
+  return v?.storefronts || [];
+}
+export function getStorefrontById(vendorId, storefrontId) {
+  return getStorefrontsForVendor(vendorId).find((s) => s.id === storefrontId) || null;
+}
+export function getStorefrontByAnySlug(slug) {
+  // Search across all vendors' storefronts (used by customer-facing /store/:slug)
+  for (const v of getVendors()) {
+    const sf = (v.storefronts || []).find((s) => s.slug === slug);
+    if (sf) return { vendor: v, storefront: sf };
+  }
+  return null;
+}
+export function addStorefront(vendorId, storefront) {
+  const v = getVendorById(vendorId);
+  if (!v) throw new Error("Vendor not found");
+  const sf = {
+    id: uid("sf"),
+    slug: slugify(storefront.slug || storefront.name),
+    name: storefront.name || "",
+    businessType: storefront.businessType || v.storefronts[0]?.businessType || "restaurant",
+    tagline: "",
+    description: "",
+    logo: "",
+    coverImage: "",
+    address: "",
+    phone: "",
+    accent: storefront.businessType === "salon" ? "salon" : "restaurant",
+    categories: [],
+    items: [],
+    services: [],
+    checkoutFields: { ...DEFAULT_CHECKOUT_FIELDS },
+    bookingFields: { ...DEFAULT_BOOKING_FIELDS },
+    disabled: false,
+    ...storefront,
+  };
+  if (!sf.slug) throw new Error("Slug is required");
+  if (!slugAvailable(sf.slug, vendorId)) throw new Error("Slug already taken");
+  const next = { ...v, storefronts: [...v.storefronts, sf] };
+  saveVendor(next);
+  return sf;
+}
+export function updateStorefront(vendorId, storefrontId, patch) {
+  const v = getVendorById(vendorId);
+  if (!v) throw new Error("Vendor not found");
+  const storefronts = v.storefronts.map((s) => (s.id === storefrontId ? { ...s, ...patch } : s));
+  saveVendor({ ...v, storefronts });
+  return storefronts.find((s) => s.id === storefrontId);
+}
+export function deleteStorefront(vendorId, storefrontId) {
+  const v = getVendorById(vendorId);
+  if (!v) return;
+  const storefronts = v.storefronts.filter((s) => s.id !== storefrontId);
+  saveVendor({ ...v, storefronts });
+  // Cascade: cleanup orders/bookings for this storefront
+  const orders = read(KEYS.orders, []).filter((o) => o.storefrontId !== storefrontId);
+  const bookings = read(KEYS.bookings, []).filter((b) => b.storefrontId !== storefrontId);
+  write(KEYS.orders, orders);
+  write(KEYS.bookings, bookings);
+}
+
+/* Override slugAvailable to also check across storefronts */
+export function slugAvailable(slug, exceptVendorId = null) {
+  const s = slugify(slug);
+  for (const v of getVendors()) {
+    for (const sf of v.storefronts || []) {
+      if (sf.slug === s && !(exceptVendorId && v.id === exceptVendorId)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/* -------------------------- Employees ------------------------------- */
+
+export const DEFAULT_EMPLOYEE_PERMISSIONS = {
+  takeOrders: true,
+  takeBookings: true,
+  viewInsights: false,
+  editCatalogue: false,
+};
+
+export function getEmployees(vendorId) {
+  const v = getVendorById(vendorId);
+  return v?.employees || [];
+}
+export function getEmployeeById(vendorId, empId) {
+  return getEmployees(vendorId).find((e) => e.id === empId) || null;
+}
+export function getEmployeeByEmail(email) {
+  const needle = (email || "").toLowerCase();
+  for (const v of getVendors()) {
+    const emp = (v.employees || []).find((e) => e.email.toLowerCase() === needle);
+    if (emp) return { vendor: v, employee: emp };
+  }
+  return null;
+}
+export function addEmployee(vendorId, employee) {
+  const v = getVendorById(vendorId);
+  if (!v) throw new Error("Vendor not found");
+  if (getEmployeeByEmail(employee.email)) throw new Error("An account with this email already exists.");
+  if (getVendorByEmail(employee.email)) throw new Error("An account with this email already exists.");
+  const emp = {
+    id: uid("emp"),
+    email: employee.email,
+    password: employee.password,
+    name: employee.name || "",
+    role: "employee",
+    storefrontIds: employee.storefrontIds || [],
+    permissions: { ...DEFAULT_EMPLOYEE_PERMISSIONS, ...(employee.permissions || {}) },
+    disabled: false,
+    createdAt: new Date().toISOString(),
+  };
+  saveVendor({ ...v, employees: [...v.employees, emp] });
+  return emp;
+}
+export function updateEmployee(vendorId, empId, patch) {
+  const v = getVendorById(vendorId);
+  if (!v) return null;
+  const employees = v.employees.map((e) => (e.id === empId ? { ...e, ...patch } : e));
+  saveVendor({ ...v, employees });
+  return employees.find((e) => e.id === empId);
+}
+export function deleteEmployee(vendorId, empId) {
+  const v = getVendorById(vendorId);
+  if (!v) return;
+  saveVendor({ ...v, employees: v.employees.filter((e) => e.id !== empId) });
+}
+
+/* ------------------ Feature flags (Pro-plan gating) ----------------- */
+
+export function updateVendorFeatures(vendorId, patch) {
+  const v = getVendorById(vendorId);
+  if (!v) return null;
+  const features = { ...v.features, ...patch };
+  saveVendor({ ...v, features });
+  return features;
+}
+export function updateVendorPlan(vendorId, plan) {
+  const v = getVendorById(vendorId);
+  if (!v) return null;
+  const features = {
+    multiStore: plan === "pro",
+    employees: plan === "pro" || plan === "growth",
+  };
+  saveVendor({ ...v, plan, features });
+  return { plan, features };
 }
 

@@ -12,30 +12,55 @@ import {
   Menu,
   X,
   Store,
+  Users,
+  Zap,
 } from "lucide-react";
 import Logo from "../../components/Logo";
 import { useAuth } from "../../lib/auth";
 
 export default function VendorDashboardLayout() {
-  const { vendor, logout } = useAuth();
+  const { vendor, employee, role, isOwner, logout } = useAuth();
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isRestaurant = vendor?.businessType === "restaurant";
-  const items = [
-    { to: "/dashboard", icon: LayoutDashboard, label: "Overview", end: true, testid: "nav-overview" },
-    { to: "/dashboard/catalogue", icon: Package, label: isRestaurant ? "Menu" : "Services", testid: "nav-catalogue" },
-    isRestaurant
-      ? { to: "/dashboard/orders", icon: Receipt, label: "Orders", testid: "nav-orders" }
-      : { to: "/dashboard/bookings", icon: CalendarClock, label: "Bookings", testid: "nav-bookings" },
-    { to: "/dashboard/insights", icon: BarChart3, label: "Insights", testid: "nav-insights" },
-    { to: "/dashboard/settings", icon: Settings, label: "Store settings", testid: "nav-settings" },
-  ];
+  const perms = employee?.permissions || {};
+
+  const items = [];
+  // Owner sees everything; employee sees only permitted tabs
+  if (isOwner) {
+    items.push({ to: "/dashboard", icon: LayoutDashboard, label: "Overview", end: true, testid: "nav-overview" });
+  }
+  items.push({ to: "/dashboard/pos", icon: Zap, label: "POS", testid: "nav-pos" });
+  if (isOwner || perms.editCatalogue) {
+    items.push({ to: "/dashboard/catalogue", icon: Package, label: isRestaurant ? "Menu" : "Services", testid: "nav-catalogue" });
+  }
+  if (isOwner || perms.takeOrders) {
+    if (isRestaurant) items.push({ to: "/dashboard/orders", icon: Receipt, label: "Orders", testid: "nav-orders" });
+  }
+  if (isOwner || perms.takeBookings) {
+    if (!isRestaurant) items.push({ to: "/dashboard/bookings", icon: CalendarClock, label: "Bookings", testid: "nav-bookings" });
+  }
+  if (isOwner || perms.viewInsights) {
+    items.push({ to: "/dashboard/insights", icon: BarChart3, label: "Insights", testid: "nav-insights" });
+  }
+  if (isOwner && vendor?.features?.multiStore) {
+    items.push({ to: "/dashboard/storefronts", icon: Store, label: "Storefronts", testid: "nav-storefronts" });
+  }
+  if (isOwner && vendor?.features?.employees) {
+    items.push({ to: "/dashboard/team", icon: Users, label: "Team", testid: "nav-team" });
+  }
+  if (isOwner) {
+    items.push({ to: "/dashboard/settings", icon: Settings, label: "Store settings", testid: "nav-settings" });
+  }
 
   const doLogout = () => {
     logout();
     nav("/");
   };
+
+  const displayName = employee?.name || vendor?.name || "Store";
+  const displayRoleLabel = role === "employee" ? "Employee" : (vendor?.businessType || "owner");
 
   return (
     <div className="min-h-screen bg-bg-base">
@@ -67,8 +92,8 @@ export default function VendorDashboardLayout() {
                 {vendor?.logo ? <img src={vendor.logo} alt="" className="h-full w-full object-cover" /> : <Store className="h-4 w-4 text-ink-muted" />}
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-medium truncate" data-testid="sidebar-vendor-name">{vendor?.name}</div>
-                <div className="text-[11px] uppercase tracking-widest text-ink-muted">{vendor?.businessType}</div>
+                <div className="text-sm font-medium truncate" data-testid="sidebar-vendor-name">{displayName}</div>
+                <div className="text-[11px] uppercase tracking-widest text-ink-muted">{displayRoleLabel}</div>
               </div>
             </div>
           </div>
