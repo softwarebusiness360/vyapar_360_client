@@ -44,27 +44,7 @@
   input:focus, textarea:focus, select:focus, button:focus { outline: none; }
 }
 
-@layer utilities {
-  .grain {
-    position: relative;
-  }
-  .grain::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.05;
-    mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
-  .glass {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-  }
-
+@layer components {
   .card-surface {
     background: #141417;
     border: 1px solid #27272a;
@@ -85,7 +65,8 @@
   .btn-primary {
     background: #6366f1;
     color: #fff;
-    padding: 0.65rem 1.1rem;
+    padding-block: 0.65rem;
+    padding-inline: 1.1rem;
     border-radius: 10px;
     font-weight: 600;
     font-family: "Outfit", sans-serif;
@@ -98,7 +79,8 @@
   .btn-ghost {
     background: transparent;
     color: #f3f4f6;
-    padding: 0.65rem 1.1rem;
+    padding-block: 0.65rem;
+    padding-inline: 1.1rem;
     border-radius: 10px;
     border: 1px solid #27272a;
     font-weight: 500;
@@ -108,7 +90,10 @@
 
   .input-field {
     width: 100%;
-    padding: 0.7rem 0.9rem;
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
     background: #0f0f11;
     border: 1px solid #27272a;
     border-radius: 10px;
@@ -135,5 +120,27 @@
   .divider-x {
     height: 1px;
     background: linear-gradient(to right, transparent, #27272a, transparent);
+  }
+}
+
+@layer utilities {
+  .grain {
+    position: relative;
+  }
+  .grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 }
