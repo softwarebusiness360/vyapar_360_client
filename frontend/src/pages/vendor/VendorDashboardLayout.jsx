@@ -60,7 +60,9 @@ export default function VendorDashboardLayout() {
   };
 
   const displayName = employee?.name || vendor?.name || "Store";
-  const displayRoleLabel = role === "employee" ? "Employee" : (vendor?.businessType || "owner");
+  const displayRoleLabel = employee
+    ? (employee.role === "manager" ? "Store Manager" : "Employee")
+    : (vendor?.businessType || "owner");
 
   return (
     <div className="min-h-screen bg-bg-base">

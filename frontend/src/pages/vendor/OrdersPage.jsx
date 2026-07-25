@@ -2,17 +2,20 @@ import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Search, Eye } from "lucide-react";
 import { useAuth } from "../../lib/auth";
-import { getOrders, updateOrderStatus, RESTAURANT_ORDER_STATUSES } from "../../lib/store";
+import { useOrders, useStorefronts } from "../../hooks";
+import { RESTAURANT_ORDER_STATUSES } from "../../lib/store";
 import { formatINR, formatDateTime } from "../../lib/utils";
 import StatusBadge from "../../components/StatusBadge";
+import StoreFilter from "../../components/vendor/StoreFilter";
 import Modal from "../../components/Modal";
 
 export default function OrdersPage() {
-  const { vendor } = useAuth();
-  const [refresh, setRefresh] = useState(0);
-  const orders = useMemo(() => getOrders(vendor.id), [vendor.id, refresh]);
+  const { vendor, isOwner } = useAuth();
+  const { allowed } = useStorefronts();
+  const [storeFilter, setStoreFilter] = useState("all");
+  const { orders, setStatus } = useOrders({ storefrontId: storeFilter });
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus_] = useState("all");
   const [viewing, setViewing] = useState(null);
 
   const filtered = orders.filter(
@@ -20,13 +23,12 @@ export default function OrdersPage() {
       (status === "all" || o.status === status) &&
       (q.trim() === "" ||
         o.code.toLowerCase().includes(q.toLowerCase()) ||
-        o.customer?.name?.toLowerCase().includes(q.toLowerCase()))
+        o.customer?.name?.toLowerCase().includes(q.toLowerCase())),
   );
 
-  const setStatusFor = (id, next) => {
-    updateOrderStatus(id, next);
+  const setStatusFor = async (id, next) => {
+    await setStatus(id, next);
     toast.success(`Marked as ${next}`);
-    setRefresh((r) => r + 1);
     if (viewing?.id === id) setViewing({ ...viewing, status: next });
   };
 
@@ -36,10 +38,17 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <div className="text-xs uppercase tracking-widest text-ink-muted">Live</div>
-        <h1 className="mt-1 text-3xl font-display font-medium tracking-tight" data-testid="orders-title">Orders</h1>
-        <p className="mt-1 text-ink-secondary">Manage every order coming into your kitchen.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-ink-muted">Live</div>
+          <h1 className="mt-1 text-3xl font-display font-medium tracking-tight" data-testid="orders-title">Orders</h1>
+          <p className="mt-1 text-ink-secondary">
+            {isOwner
+              ? "Manage every order across your stores."
+              : `Orders for your ${allowed.length} assigned storefront${allowed.length === 1 ? "" : "s"}.`}
+          </p>
+        </div>
+        <StoreFilter storefronts={allowed} value={storeFilter} onChange={setStoreFilter} testid="orders-store-filter" />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -55,7 +64,7 @@ export default function OrdersPage() {
         </div>
         <select
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => setStatus_(e.target.value)}
           className="input-field sm:max-w-[180px]"
           data-testid="orders-status-filter"
         >

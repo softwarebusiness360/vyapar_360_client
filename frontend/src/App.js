@@ -33,7 +33,9 @@ import AdminBusinessDetailPage from "./pages/admin/AdminBusinessDetailPage";
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
 import AdminLandingCMSPage from "./pages/admin/AdminLandingCMSPage";
+import AdminPlansPage from "./pages/admin/AdminPlansPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import { RequireOwner, RequirePermission } from "./lib/rbac";
 
 function RequireAuth({ children, requireOnboarded = false }) {
   const { vendor, employee, loading } = useAuth();
@@ -111,12 +113,16 @@ export default function App() {
                 </RequireAuth>
               }
             >
-              <Route index element={<OverviewPage />} />
-              <Route path="catalogue" element={<CataloguePage />} />
-              <Route path="orders" element={<OrdersPage />} />
-              <Route path="bookings" element={<BookingsPage />} />
-              <Route path="insights" element={<InsightsPage />} />
-              <Route path="settings" element={<StoreSettingsPage />} />
+              <Route index element={<RequireOwner><OverviewPage /></RequireOwner>} />
+              <Route path="pos" element={<POSPage />} />
+              <Route path="catalogue" element={<RequirePermission perm="editCatalogue"><CataloguePage /></RequirePermission>} />
+              <Route path="orders" element={<RequirePermission perm="takeOrders"><OrdersPage /></RequirePermission>} />
+              <Route path="bookings" element={<RequirePermission perm="takeBookings"><BookingsPage /></RequirePermission>} />
+              <Route path="insights" element={<RequirePermission perm="viewInsights"><InsightsPage /></RequirePermission>} />
+              <Route path="storefronts" element={<RequireOwner><StorefrontsPage /></RequireOwner>} />
+              <Route path="storefronts/:sfId" element={<RequireOwner><StorefrontsPage /></RequireOwner>} />
+              <Route path="team" element={<RequireOwner><TeamPage /></RequireOwner>} />
+              <Route path="settings" element={<RequireOwner><StoreSettingsPage /></RequireOwner>} />
             </Route>
 
             {/* Admin */}
@@ -135,6 +141,7 @@ export default function App() {
               <Route path="orders" element={<AdminOrdersPage />} />
               <Route path="bookings" element={<AdminBookingsPage />} />
               <Route path="landing" element={<AdminLandingCMSPage />} />
+              <Route path="plans" element={<AdminPlansPage />} />
             </Route>
 
             {/* Customer storefront */}

@@ -21,4 +21,11 @@ via `seedIfNeeded()` in `src/lib/store.js`.
 - Business: Style Salon (Mumbai)
 - Plan: Pro
 
+## Sample Store Manager (created in Session 2 demo)
+- Email: `ravi@pizzahub.com`
+- Password: `ravi1234`
+- Role: **manager** (near-owner access; no team/settings/billing)
+- Belongs to: Pizza Hub workspace
+- Note: You can safely delete/re-invite this from `/dashboard/team`.
+
 The `/login` page also has one-click "Try a demo" shortcuts for both vendors.

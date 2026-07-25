@@ -124,7 +124,7 @@ export default function AdminBusinessDetailPage() {
           <div className="rounded-lg bg-bg-elevated border border-line p-4">
             <div className="text-[11px] uppercase tracking-widest text-ink-muted mb-2">Plan</div>
             <div className="flex flex-wrap gap-2">
-              {["starter", "growth", "pro"].map((p) => (
+              {["free", "growth", "pro", "enterprise"].map((p) => (
                 <button
                   key={p}
                   onClick={() => { updateVendorPlan(vendor.id, p); setRefresh((r) => r + 1); toast.success(`Plan set to ${p}`); }}
@@ -135,6 +135,13 @@ export default function AdminBusinessDetailPage() {
                 </button>
               ))}
             </div>
+            {vendor.planConfig && (
+              <div className="mt-3 text-[11px] text-ink-muted flex flex-wrap gap-x-4 gap-y-1">
+                <span>Max stores: <span className="text-ink-secondary font-mono">{vendor.planConfig.maxStores}</span></span>
+                <span>Max employees: <span className="text-ink-secondary font-mono">{vendor.planConfig.maxEmployees}</span></span>
+                <span>Insights: <span className="text-ink-secondary">{vendor.planConfig.insights}</span></span>
+              </div>
+            )}
           </div>
           <div className="rounded-lg bg-bg-elevated border border-line p-4">
             <div className="text-[11px] uppercase tracking-widest text-ink-muted mb-3">Features</div>

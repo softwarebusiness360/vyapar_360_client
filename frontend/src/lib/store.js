@@ -25,8 +25,61 @@ const KEYS = {
   orders: "vyapar360.orders",
   bookings: "vyapar360.bookings",
   landing: "vyapar360.landing_config",
+  planMatrix: "vyapar360.plan_matrix",
   seed: "vyapar360.seed_done",
 };
+
+/* -------------- Plan matrix (admin-configurable) ------------------- */
+
+export const PLAN_TIERS = ["free", "growth", "pro", "enterprise"];
+
+export const DEFAULT_PLAN_MATRIX = {
+  free:       { label: "Free",       multiStore: false, employees: false, maxStores: 1,   maxEmployees: 0,   insights: "basic",     customDomain: false, prioritySupport: false, whatsappNotifs: false, removeBranding: false },
+  growth:     { label: "Growth",     multiStore: false, employees: true,  maxStores: 1,   maxEmployees: 3,   insights: "advanced",  customDomain: false, prioritySupport: false, whatsappNotifs: true,  removeBranding: true  },
+  pro:        { label: "Pro",        multiStore: true,  employees: true,  maxStores: 5,   maxEmployees: 15,  insights: "unlimited", customDomain: true,  prioritySupport: false, whatsappNotifs: true,  removeBranding: true  },
+  enterprise: { label: "Enterprise", multiStore: true,  employees: true,  maxStores: 100, maxEmployees: 500, insights: "unlimited", customDomain: true,  prioritySupport: true,  whatsappNotifs: true,  removeBranding: true  },
+};
+
+export function getPlanMatrix() {
+  const saved = read(KEYS.planMatrix, null);
+  if (!saved) return DEFAULT_PLAN_MATRIX;
+  // Shallow-merge each tier so newly added flags fall back to defaults
+  const merged = {};
+  for (const t of PLAN_TIERS) merged[t] = { ...DEFAULT_PLAN_MATRIX[t], ...(saved[t] || {}) };
+  return merged;
+}
+export function savePlanMatrix(matrix) {
+  write(KEYS.planMatrix, matrix);
+  return matrix;
+}
+export function resetPlanMatrix() {
+  localStorage.removeItem(KEYS.planMatrix);
+  return DEFAULT_PLAN_MATRIX;
+}
+// Normalize legacy plan ids ("starter" -> "free")
+export function normalizePlan(plan) {
+  if (plan === "starter") return "free";
+  return PLAN_TIERS.includes(plan) ? plan : "free";
+}
+export function getPlanConfig(plan) {
+  return getPlanMatrix()[normalizePlan(plan)];
+}
+
+/* ------------------- RBAC role presets ------------------- */
+
+// Roles: "owner" (implicit, via vendor account), "manager", "employee",
+// plus platform "admin" (separate account). Managers get near-owner
+// access inside a workspace but still can't manage other employees or
+// the subscription.
+export const ROLES = ["owner", "manager", "employee"];
+
+export const ROLE_PRESETS = {
+  manager:  { takeOrders: true, takeBookings: true, viewInsights: true,  editCatalogue: true  },
+  employee: { takeOrders: true, takeBookings: true, viewInsights: false, editCatalogue: false },
+};
+
+// Back-compat alias — the standalone employee permission preset.
+export const DEFAULT_EMPLOYEE_PERMISSIONS = ROLE_PRESETS.employee;
 
 /* ------------------- Default configurable schemas ------------------- */
 
@@ -78,18 +131,28 @@ function withDefaults(vendor) {
       bookingFields: { ...DEFAULT_BOOKING_FIELDS, ...(s.bookingFields || {}) },
     }));
   }
-  const defaultPlan = vendor.plan || "starter";
+  const rawPlan = vendor.plan;
+  const defaultPlan = normalizePlan(rawPlan);
+  const matrix = getPlanMatrix();
+  const matrixCfg = matrix[defaultPlan];
   const defaultFeatures = {
-    multiStore: defaultPlan === "pro",
-    employees: defaultPlan === "pro" || defaultPlan === "growth",
+    // Feature flags derive from plan matrix but can be overridden per vendor
+    // (platform admin toggles that persist on the vendor record).
+    multiStore: matrixCfg.multiStore,
+    employees: matrixCfg.employees,
     ...(vendor.features || {}),
   };
   return {
     ...vendor,
     storefronts,
-    employees: vendor.employees || [],
+    employees: (vendor.employees || []).map((e) => ({
+      role: e.role || "employee",
+      ...e,
+      permissions: { ...ROLE_PRESETS[e.role || "employee"], ...(e.permissions || {}) },
+    })),
     plan: defaultPlan,
     features: defaultFeatures,
+    planConfig: matrixCfg, // Read-only convenience — resolved limits + entitlements
     // Keep back-compat facades for old code paths (mirror storefronts[0]):
     checkoutFields: { ...DEFAULT_CHECKOUT_FIELDS, ...(storefronts[0]?.checkoutFields || vendor.checkoutFields || {}) },
     bookingFields: { ...DEFAULT_BOOKING_FIELDS, ...(storefronts[0]?.bookingFields || vendor.bookingFields || {}) },
@@ -763,6 +826,13 @@ export function getStorefrontByAnySlug(slug) {
 export function addStorefront(vendorId, storefront) {
   const v = getVendorById(vendorId);
   if (!v) throw new Error("Vendor not found");
+  const planCfg = getPlanConfig(v.plan);
+  if (!planCfg.multiStore && (v.storefronts?.length || 0) >= 1) {
+    throw new Error(`Your ${planCfg.label} plan supports a single storefront only. Upgrade to add more.`);
+  }
+  if ((v.storefronts?.length || 0) >= planCfg.maxStores) {
+    throw new Error(`Your ${planCfg.label} plan allows up to ${planCfg.maxStores} storefront${planCfg.maxStores === 1 ? "" : "s"}.`);
+  }
   const sf = {
     id: uid("sf"),
     slug: slugify(storefront.slug || storefront.name),
@@ -823,12 +893,8 @@ export function slugAvailable(slug, exceptVendorId = null) {
 
 /* -------------------------- Employees ------------------------------- */
 
-export const DEFAULT_EMPLOYEE_PERMISSIONS = {
-  takeOrders: true,
-  takeBookings: true,
-  viewInsights: false,
-  editCatalogue: false,
-};
+// (DEFAULT_EMPLOYEE_PERMISSIONS is now defined below as an alias for
+// ROLE_PRESETS.employee — see updateVendorPlan section.)
 
 export function getEmployees(vendorId) {
   const v = getVendorById(vendorId);
@@ -848,16 +914,24 @@ export function getEmployeeByEmail(email) {
 export function addEmployee(vendorId, employee) {
   const v = getVendorById(vendorId);
   if (!v) throw new Error("Vendor not found");
+  const planCfg = getPlanConfig(v.plan);
+  if (!planCfg.employees) {
+    throw new Error(`Your ${planCfg.label} plan doesn't include team members. Upgrade to invite employees.`);
+  }
+  if ((v.employees?.length || 0) >= planCfg.maxEmployees) {
+    throw new Error(`Your ${planCfg.label} plan allows up to ${planCfg.maxEmployees} employees.`);
+  }
   if (getEmployeeByEmail(employee.email)) throw new Error("An account with this email already exists.");
   if (getVendorByEmail(employee.email)) throw new Error("An account with this email already exists.");
+  const role = ROLES.includes(employee.role) && employee.role !== "owner" ? employee.role : "employee";
   const emp = {
     id: uid("emp"),
     email: employee.email,
     password: employee.password,
     name: employee.name || "",
-    role: "employee",
+    role,
     storefrontIds: employee.storefrontIds || [],
-    permissions: { ...DEFAULT_EMPLOYEE_PERMISSIONS, ...(employee.permissions || {}) },
+    permissions: { ...ROLE_PRESETS[role], ...(employee.permissions || {}) },
     disabled: false,
     createdAt: new Date().toISOString(),
   };
@@ -889,11 +963,106 @@ export function updateVendorFeatures(vendorId, patch) {
 export function updateVendorPlan(vendorId, plan) {
   const v = getVendorById(vendorId);
   if (!v) return null;
+  const normalized = normalizePlan(plan);
+  const cfg = getPlanConfig(normalized);
   const features = {
-    multiStore: plan === "pro",
-    employees: plan === "pro" || plan === "growth",
+    multiStore: cfg.multiStore,
+    employees: cfg.employees,
   };
-  saveVendor({ ...v, plan, features });
-  return { plan, features };
+  saveVendor({ ...v, plan: normalized, features });
+  return { plan: normalized, features };
+}
+
+/* ---------------- Cross-store analytics helpers ---------------- */
+
+/**
+ * Return orders/bookings scoped to a vendor, optionally filtered by
+ * storefrontIds (array), status, or a date-range (inclusive ISO strings).
+ * Legacy records without `storefrontId` are treated as belonging to the
+ * first storefront (created by `withDefaults` migration).
+ */
+function _resolveStorefrontId(vendor, record) {
+  if (record.storefrontId) return record.storefrontId;
+  return vendor.storefronts?.[0]?.id || null;
+}
+
+export function getVendorTransactions(vendorId, { storefrontIds, from, to, includeCancelled = false } = {}) {
+  const v = getVendorById(vendorId);
+  if (!v) return { orders: [], bookings: [] };
+  const okStore = (rec) => {
+    if (!storefrontIds || storefrontIds.length === 0) return true;
+    return storefrontIds.includes(_resolveStorefrontId(v, rec));
+  };
+  const inRange = (iso) => {
+    if (!iso) return false;
+    if (from && iso < from) return false;
+    if (to && iso > to) return false;
+    return true;
+  };
+  const notCancelled = (rec) => includeCancelled || rec.status !== "cancelled";
+  const orders = getOrders(vendorId).filter((o) =>
+    okStore(o) && notCancelled(o) && (!from && !to ? true : inRange(o.createdAt)),
+  );
+  const bookings = getBookings(vendorId).filter((b) =>
+    okStore(b) && notCancelled(b) && (!from && !to ? true : inRange(b.createdAt)),
+  );
+  return { orders, bookings };
+}
+
+/**
+ * Compute revenue/count KPIs for a set of orders + bookings.
+ */
+export function computeKPIs({ orders = [], bookings = [] }) {
+  const orderRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const bookingRevenue = bookings.reduce((s, b) => s + (b.service?.price || 0), 0);
+  const revenue = orderRevenue + bookingRevenue;
+  const txCount = orders.length + bookings.length;
+  return {
+    revenue,
+    orderRevenue,
+    bookingRevenue,
+    orders: orders.length,
+    bookings: bookings.length,
+    txCount,
+    avgTicket: txCount > 0 ? Math.round(revenue / txCount) : 0,
+  };
+}
+
+/**
+ * Per-storefront KPI breakdown for the owner's consolidated dashboard.
+ */
+export function getPerStoreStats(vendorId, { from, to } = {}) {
+  const v = getVendorById(vendorId);
+  if (!v) return [];
+  return (v.storefronts || []).map((sf) => {
+    const { orders, bookings } = getVendorTransactions(vendorId, { storefrontIds: [sf.id], from, to });
+    return { storefront: sf, ...computeKPIs({ orders, bookings }) };
+  });
+}
+
+/**
+ * Employee performance metrics (owner-only view).
+ */
+export function getEmployeePerformance(vendorId, { from, to, storefrontIds } = {}) {
+  const v = getVendorById(vendorId);
+  if (!v) return [];
+  const employees = v.employees || [];
+  const { orders, bookings } = getVendorTransactions(vendorId, { storefrontIds, from, to });
+  return employees.map((emp) => {
+    const empOrders = orders.filter((o) => o.employeeId === emp.id);
+    const empBookings = bookings.filter((b) => b.employeeId === emp.id);
+    const kpis = computeKPIs({ orders: empOrders, bookings: empBookings });
+    const assignedStores = (v.storefronts || []).filter((s) => emp.storefrontIds.includes(s.id));
+    return { employee: emp, assignedStores, ...kpis };
+  });
+}
+
+/**
+ * Storefronts an employee is allowed to operate on. Owners see all.
+ */
+export function getAllowedStorefronts(vendor, employee) {
+  if (!vendor) return [];
+  if (!employee) return vendor.storefronts || [];
+  return (vendor.storefronts || []).filter((s) => employee.storefrontIds.includes(s.id));
 }
 

@@ -1,18 +1,21 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 import { Search, Eye, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { useAuth } from "../../lib/auth";
-import { getBookings, updateBookingStatus, SALON_BOOKING_STATUSES } from "../../lib/store";
+import { useBookings, useStorefronts } from "../../hooks";
+import { SALON_BOOKING_STATUSES } from "../../lib/store";
 import { formatINR, formatDate } from "../../lib/utils";
 import StatusBadge from "../../components/StatusBadge";
+import StoreFilter from "../../components/vendor/StoreFilter";
 import Modal from "../../components/Modal";
 
 export default function BookingsPage() {
-  const { vendor } = useAuth();
-  const [refresh, setRefresh] = useState(0);
-  const bookings = useMemo(() => getBookings(vendor.id), [vendor.id, refresh]);
+  const { vendor, isOwner } = useAuth();
+  const { allowed } = useStorefronts();
+  const [storeFilter, setStoreFilter] = useState("all");
+  const { bookings, setStatus } = useBookings({ storefrontId: storeFilter });
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus_] = useState("all");
   const [viewing, setViewing] = useState(null);
 
   const filtered = bookings.filter(
@@ -20,13 +23,12 @@ export default function BookingsPage() {
       (status === "all" || b.status === status) &&
       (q.trim() === "" ||
         b.code.toLowerCase().includes(q.toLowerCase()) ||
-        b.customer?.name?.toLowerCase().includes(q.toLowerCase()))
+        b.customer?.name?.toLowerCase().includes(q.toLowerCase())),
   );
 
-  const setStatusFor = (id, next) => {
-    updateBookingStatus(id, next);
+  const setStatusFor = async (id, next) => {
+    await setStatus(id, next);
     toast.success(`Marked as ${next}`);
-    setRefresh((r) => r + 1);
     if (viewing?.id === id) setViewing({ ...viewing, status: next });
   };
 
@@ -36,10 +38,17 @@ export default function BookingsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <div className="text-xs uppercase tracking-widest text-ink-muted">Appointments</div>
-        <h1 className="mt-1 text-3xl font-display font-medium tracking-tight" data-testid="bookings-title">Bookings</h1>
-        <p className="mt-1 text-ink-secondary">All your upcoming and past appointments in one place.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-ink-muted">Appointments</div>
+          <h1 className="mt-1 text-3xl font-display font-medium tracking-tight" data-testid="bookings-title">Bookings</h1>
+          <p className="mt-1 text-ink-secondary">
+            {isOwner
+              ? "All your upcoming and past appointments across stores."
+              : `Bookings for your ${allowed.length} assigned storefront${allowed.length === 1 ? "" : "s"}.`}
+          </p>
+        </div>
+        <StoreFilter storefronts={allowed} value={storeFilter} onChange={setStoreFilter} testid="bookings-store-filter" />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -55,7 +64,7 @@ export default function BookingsPage() {
         </div>
         <select
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => setStatus_(e.target.value)}
           className="input-field sm:max-w-[180px]"
           data-testid="bookings-status-filter"
         >

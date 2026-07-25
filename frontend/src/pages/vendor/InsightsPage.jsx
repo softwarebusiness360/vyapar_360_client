@@ -1,106 +1,131 @@
-import React, { useMemo } from "react";
+import React, { useState } from "react";
 import { TrendingUp, ShoppingBag, Users, IndianRupee } from "lucide-react";
 import { useAuth } from "../../lib/auth";
-import { getOrders, getBookings } from "../../lib/store";
+import { useMultiStoreAnalytics, usePeriodFilter, useStorefronts, useEmployeePerformance } from "../../hooks";
 import { formatINR } from "../../lib/utils";
+import StatCard from "../../components/vendor/StatCard";
+import PeriodFilter from "../../components/vendor/PeriodFilter";
+import StoreFilter from "../../components/vendor/StoreFilter";
+import PerStoreBreakdown from "../../components/vendor/PerStoreBreakdown";
+import EmployeePerformanceTable from "../../components/vendor/EmployeePerformanceTable";
 
+/**
+ * InsightsPage — deeper analytics (segmented by store, period, employee).
+ *
+ * Employees with the `viewInsights` permission see a limited view scoped to
+ * their assigned stores; owners get the full picture including employee KPIs.
+ */
 export default function InsightsPage() {
-  const { vendor } = useAuth();
-  const isRestaurant = vendor.businessType === "restaurant";
-  const orders = useMemo(() => (isRestaurant ? getOrders(vendor.id) : []), [vendor.id, isRestaurant]);
-  const bookings = useMemo(() => (!isRestaurant ? getBookings(vendor.id) : []), [vendor.id, isRestaurant]);
+  const { vendor, employee, isOwner } = useAuth();
+  const { storefronts, allowed } = useStorefronts();
+  const period = usePeriodFilter("30d");
+  const [storeFilter, setStoreFilter] = useState("all");
 
-  const revenue = isRestaurant
-    ? orders.filter((o) => o.status !== "cancelled").reduce((s, o) => s + o.total, 0)
-    : bookings.filter((b) => b.status !== "cancelled").reduce((s, b) => s + (b.service?.price || 0), 0);
+  // Employees are locked to their assigned stores; owners can pick.
+  const scopedStorefronts = isOwner ? storefronts : allowed;
+  const scopedIds = storeFilter === "all"
+    ? scopedStorefronts.map((s) => s.id)
+    : [storeFilter];
 
-  const txCount = isRestaurant ? orders.length : bookings.length;
-  const avgOrder = txCount > 0 ? Math.round(revenue / txCount) : 0;
+  const analytics = useMultiStoreAnalytics({
+    vendor,
+    storefrontIds: scopedIds,
+    from: period.from,
+    to: period.to,
+  });
+  const teamPerf = useEmployeePerformance({
+    vendor: isOwner ? vendor : null,
+    storefrontIds: scopedIds,
+    from: period.from,
+    to: period.to,
+  });
+
+  if (!analytics) return null;
+  const { kpis, perStore, orders, bookings } = analytics;
+
   const uniqueCustomers = new Set(
-    (isRestaurant ? orders : bookings).map((r) => r.customer?.phone || r.customer?.name)
+    [...orders, ...bookings].map((r) => r.customer?.phone || r.customer?.name),
   ).size;
 
-  // Top items/services
-  const counts = new Map();
-  if (isRestaurant) {
-    orders.forEach((o) =>
-      o.items.forEach((i) => counts.set(i.name, (counts.get(i.name) || 0) + i.qty))
-    );
-  } else {
-    bookings.forEach((b) => counts.set(b.service.name, (counts.get(b.service.name) || 0) + 1));
-  }
-  const topList = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const topMax = topList[0]?.[1] || 1;
-
-  // 30-day revenue trend
-  const trend = useMemo(() => {
-    const days = Array.from({ length: 30 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (29 - i));
-      const iso = d.toISOString().slice(0, 10);
-      const val = isRestaurant
-        ? orders.filter((o) => o.status !== "cancelled" && o.createdAt.slice(0, 10) === iso).reduce((s, o) => s + o.total, 0)
-        : bookings.filter((b) => b.status !== "cancelled" && b.createdAt.slice(0, 10) === iso).reduce((s, b) => s + (b.service?.price || 0), 0);
-      return { iso, val };
-    });
-    if (days.every((d) => d.val === 0)) {
-      return days.map((d, i) => ({ ...d, val: Math.round(800 + Math.sin(i / 3) * 400 + Math.random() * 500) }));
-    }
-    return days;
-  }, [orders, bookings, isRestaurant]);
-  const trendMax = Math.max(...trend.map((t) => t.val), 1);
-
   const stats = [
-    { icon: IndianRupee, label: "Revenue", value: formatINR(revenue) },
-    { icon: ShoppingBag, label: isRestaurant ? "Orders" : "Bookings", value: txCount },
-    { icon: TrendingUp, label: "Avg order value", value: formatINR(avgOrder) },
+    { icon: IndianRupee, label: "Revenue", value: formatINR(kpis.revenue) },
+    { icon: ShoppingBag, label: "Transactions", value: kpis.txCount },
+    { icon: TrendingUp, label: "Avg ticket", value: formatINR(kpis.avgTicket) },
     { icon: Users, label: "Unique customers", value: uniqueCustomers },
   ];
 
+  // Top items / services list (across the selected scope)
+  const counts = new Map();
+  orders.forEach((o) => o.items?.forEach((i) => counts.set(i.name, (counts.get(i.name) || 0) + i.qty)));
+  bookings.forEach((b) => counts.set(b.service?.name || "—", (counts.get(b.service?.name || "—") || 0) + 1));
+  const topList = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const topMax = topList[0]?.[1] || 1;
+
   return (
     <div className="space-y-8">
-      <div>
-        <div className="text-xs uppercase tracking-widest text-ink-muted">Reports</div>
-        <h1 className="mt-1 text-3xl font-display font-medium tracking-tight" data-testid="insights-title">Insights</h1>
-        <p className="mt-1 text-ink-secondary">Understand what's driving your business.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-ink-muted">Reports</div>
+          <h1 className="mt-1 text-3xl font-display font-medium tracking-tight" data-testid="insights-title">Insights</h1>
+          <p className="mt-1 text-ink-secondary">
+            {isOwner ? "Understand what's driving your business." : "Your stores in numbers."}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StoreFilter
+            storefronts={scopedStorefronts}
+            value={storeFilter}
+            onChange={setStoreFilter}
+            testid="insights-store-filter"
+          />
+          <PeriodFilter
+            options={period.options}
+            value={period.period}
+            onChange={period.setPeriod}
+            testid="insights-period-filter"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map((s, i) => (
-          <div key={s.label} className="card-surface p-5" data-testid={`insight-stat-${i}`}>
-            <div className="h-9 w-9 rounded-lg border border-brand/30 bg-brand-soft grid place-items-center">
-              <s.icon className="h-4 w-4 text-brand" />
-            </div>
-            <div className="mt-4 text-[11px] uppercase tracking-widest text-ink-muted">{s.label}</div>
-            <div className="mt-1 font-display font-semibold text-2xl tracking-tight">{s.value}</div>
-          </div>
+          <StatCard
+            key={s.label}
+            icon={s.icon}
+            label={s.label}
+            value={s.value}
+            index={i}
+            testid={`insight-stat-${i}`}
+          />
         ))}
       </div>
+
+      {isOwner && storefronts.length > 1 && (
+        <PerStoreBreakdown stats={perStore} onSelect={setStoreFilter} />
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 card-surface p-5">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <div className="text-[11px] uppercase tracking-widest text-ink-muted">Last 30 days</div>
+              <div className="text-[11px] uppercase tracking-widest text-ink-muted">{period.currentLabel}</div>
               <div className="mt-1 font-display text-lg font-medium">Revenue trend</div>
             </div>
           </div>
-          <div className="flex items-end gap-[3px] h-40">
-            {trend.map((d, i) => (
+          <div className="flex items-end gap-[3px] h-40" data-testid="insights-trend-chart">
+            {analytics.trend.map((d, i) => (
               <div
                 key={i}
                 className="flex-1 rounded-t bg-gradient-to-t from-brand/20 to-brand/90 hover:from-brand/40 hover:to-brand transition-colors"
-                style={{ height: `${(d.val / trendMax) * 140}px` }}
-                title={`${d.iso}: ${formatINR(d.val)}`}
+                style={{ height: `${(d.value / Math.max(...analytics.trend.map((x) => x.value), 1)) * 140}px` }}
+                title={`${d.iso}: ${formatINR(d.value)}`}
               />
             ))}
           </div>
         </div>
 
         <div className="card-surface p-5">
-          <div className="font-display text-lg font-medium mb-4">
-            Top {isRestaurant ? "items" : "services"}
-          </div>
+          <div className="font-display text-lg font-medium mb-4">Top items / services</div>
           {topList.length === 0 ? (
             <div className="text-sm text-ink-muted py-8 text-center">No data yet.</div>
           ) : (
@@ -112,7 +137,10 @@ export default function InsightsPage() {
                     <span className="font-mono text-ink-muted">{count}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-bg-elevated overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-brand to-fuchsia-500" style={{ width: `${(count / topMax) * 100}%` }} />
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-brand to-fuchsia-500"
+                      style={{ width: `${(count / topMax) * 100}%` }}
+                    />
                   </div>
                 </li>
               ))}
@@ -120,6 +148,17 @@ export default function InsightsPage() {
           )}
         </div>
       </div>
+
+      {/* Owner-only: employee performance */}
+      {isOwner && (vendor.employees?.length || 0) > 0 && (
+        <div className="space-y-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-widest text-ink-muted">Team</div>
+            <h2 className="mt-1 font-display text-xl font-medium">Employee performance</h2>
+          </div>
+          <EmployeePerformanceTable rows={teamPerf} isRestaurant={vendor.businessType === "restaurant"} />
+        </div>
+      )}
     </div>
   );
 }

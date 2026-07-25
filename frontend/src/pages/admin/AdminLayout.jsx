@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   ShieldCheck,
+  BadgeDollarSign,
 } from "lucide-react";
 import Logo from "../../components/Logo";
 import { useAdminAuth } from "../../lib/adminAuth";
@@ -24,6 +25,7 @@ export default function AdminLayout() {
     { to: "/admin/businesses", icon: Store, label: "Businesses", testid: "admin-nav-businesses" },
     { to: "/admin/orders", icon: Receipt, label: "All orders", testid: "admin-nav-orders" },
     { to: "/admin/bookings", icon: CalendarClock, label: "All bookings", testid: "admin-nav-bookings" },
+    { to: "/admin/plans", icon: BadgeDollarSign, label: "Plan matrix", testid: "admin-nav-plans" },
     { to: "/admin/landing", icon: Sparkles, label: "Landing CMS", testid: "admin-nav-landing" },
   ];
 

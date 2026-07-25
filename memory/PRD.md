@@ -1,65 +1,104 @@
 # Vyapar360 — PRD
 
-## Problem statement
-User cloned `https://github.com/softwarebusiness360/vyapar_360_client.git` into this Emergent
-environment and requested a redesigned **Pricing section like Emergent** (with monthly/annual
-toggle) that is fully **configurable from the existing admin CMS**, with more configuration
-knobs than before. The pricing section must be built first before moving on to other work.
+## Problem statement (rolling)
+Originally cloned from `https://github.com/softwarebusiness360/vyapar_360_client.git`.
+Session goals (accumulating):
+1. Pricing section like Emergent with monthly/annual toggle, driven by the admin CMS. **Done**.
+2. **Multi-Store & Employee Management (Pro Feature)** — full RBAC, plan-configurable limits,
+   consolidated + per-store analytics, employee performance metrics, admin-configurable plan
+   matrix, and a modular hooks-first codebase (Container/Presentational split). **Done**.
 
 ## Architecture
 - **Type**: Frontend-only SPA (React 18 + CRA via CRACO + Tailwind + Framer Motion)
-- **Backend**: none yet (all data in LocalStorage via `src/lib/store.js`, REST-shaped API)
-- **Layout**:
-  - `/app/frontend/`  → the repo (moved from repo root to fit Emergent's supervisor config)
-  - `/app/backend/`   → empty (backend not yet built)
+- **Backend**: not yet built. All data in LocalStorage via `src/lib/store.js` behind an
+  adapter-switching API client (`src/lib/api/`) so it can flip to HTTP later without changing
+  consumers.
+- **Directory conventions**:
+  - `src/hooks/`              → all data-fetching + orchestration hooks (Container layer)
+  - `src/components/vendor/`  → business-neutral vendor presentational pieces
+  - `src/components/admin/`   → admin presentational pieces (planned)
+  - `src/pages/vendor/`       → thin containers that compose hooks + components
+  - `src/lib/store.js`        → single source of truth for local data model + business rules
+  - `src/lib/rbac.jsx`        → `<RequireOwner>` + `<RequirePermission>` URL-level guards
 
-## Personas
-- **Vendor** (restaurant/salon owner) — signs up, onboards, manages a storefront
-- **Customer** — orders / books appointments from a storefront
-- **Platform admin** — manages businesses and edits landing content via `/admin`
+## Roles & RBAC
+Roles: **Business Owner** (implicit, via vendor account) · **Store Manager** (employee.role="manager")
+· **Employee** (employee.role="employee") · **Platform Admin** (separate account).
 
-## Core requirements (static)
-- Editable landing content (hero, stats, features, pricing, FAQ) via admin
-- Pricing section modelled after Emergent's — monthly / annual pill toggle, savings badge,
-  auto-computed annual total, per-plan config
-- No commission on orders, no vendor lock-in
+Role permission presets (`ROLE_PRESETS` in `store.js`):
+- Manager:  `takeOrders, takeBookings, viewInsights, editCatalogue`
+- Employee: `takeOrders, takeBookings`
+Override any preset per-employee from the Team modal.
 
-## What's implemented (this session — 2026-01-25)
-### Pricing section — Emergent-style (`src/pages/marketing/LandingPage.jsx`)
-- Monthly / Annual pill toggle (`data-testid="pricing-billing-toggle"`)
-- Prices switch reactively; annual view shows `total billed yearly` + `Save N%`
-- Currency, section eyebrow/title/subtitle, toggle labels, savings badge, footer
-  notes are all driven by the CMS config
+URL-level enforcement in `App.js`:
+- `RequireOwner`: `/dashboard` (overview), `/dashboard/storefronts`, `/dashboard/team`, `/dashboard/settings`
+- `RequirePermission perm="editCatalogue"`: `/dashboard/catalogue`
+- `RequirePermission perm="takeOrders"`: `/dashboard/orders`
+- `RequirePermission perm="takeBookings"`: `/dashboard/bookings`
+- `RequirePermission perm="viewInsights"`: `/dashboard/insights`
+- POS is open to any signed-in user (POS is the default employee landing).
 
-### Admin CMS — new "Pricing section" block (`src/pages/admin/AdminLandingCMSPage.jsx`)
-- Section text: eyebrow, title, subtitle, currency symbol
-- Billing toggle controls: show/hide, default cycle, monthly/annual labels,
-  savings badge text, monthly plan hint
-- Footer notes: add / remove rows with icon selector
-- Per-plan: **Monthly Price** + **Annual Price / mo**, icon selector, suffix,
-  tagline, badge, CTA, features
-- Live editor hint under each plan showing computed annual total + savings %
+Non-authorised URLs redirect to `/dashboard/pos` (employee home) or `/dashboard` (owner home).
 
-### Data layer (`src/lib/store.js`)
-- Extended `DEFAULT_LANDING_CONFIG` with a `pricing` block
-- Migrated plan schema: `price` → `monthlyPrice` + `annualPrice` (per-month when annual)
-- `getLandingConfig()` deep-merges pricing config and back-fills legacy plans
-  (existing `price` values are auto-upgraded to monthlyPrice + annualPrice)
+## Plan matrix (admin-configurable — `/admin/plans`)
+Persisted at `vyapar360.plan_matrix`. Tiers: `free`, `growth`, `pro`, `enterprise`.
+Each tier has editable: `label, multiStore, employees, whatsappNotifs, removeBranding,
+customDomain, prioritySupport, insights (basic|advanced|unlimited), maxStores, maxEmployees`.
+Limits are enforced at write-time in `addStorefront` and `addEmployee`.
 
-### Environment setup
-- Repo relocated from repo-root layout to `/app/frontend/` (supervisor requirement)
-- `/app/frontend/.env` created with `REACT_APP_BACKEND_URL` + `WDS_SOCKET_PORT`
-- `yarn install` run, `frontend` supervisor restarted → compiles cleanly
+## Cross-store analytics
+`useMultiStoreAnalytics({ vendor, storefrontIds, from, to })` yields:
+- `kpis`: revenue, orders, bookings, txCount, avgTicket
+- `perStore`: per-storefront breakdown (`storefront + KPIs`)
+- `trend`: day-wise revenue for the selected window
+Backed by store helpers `getVendorTransactions`, `computeKPIs`, `getPerStoreStats`.
 
-## Backlog / Next tasks (as user hinted "we will move ahead")
-- P0: user-driven next section (pending user's next request)
-- P1: Real backend for landing config (persist across devices — currently LocalStorage)
-- P1: Stripe / Razorpay integration for actual paid plan upgrades
-- P1: WhatsApp order & booking notifications
+## Employee performance
+`useEmployeePerformance({ vendor, storefrontIds, from, to })` returns an array of
+`{ employee, assignedStores, revenue, orders, bookings, txCount, avgTicket }` sorted by top
+revenue. Rendered by `<EmployeePerformanceTable />` on both Team and Insights pages.
+
+## Hooks catalogue (`src/hooks/`)
+- `useStorefronts` · `useEmployees` · `usePeriodFilter (Today/7d/30d/MTD/All)`
+- `useMultiStoreAnalytics` · `useEmployeePerformance`
+- `useOrders` / `useBookings` (auto-scope by employee assignments)
+- `usePlanMatrix` · `useAdminBusinesses` · `useLandingConfig`
+- Barrel export in `src/hooks/index.js`
+
+## What's implemented (dates)
+### 2026-01-25 · Session 1
+- Emergent-style pricing section with monthly/annual toggle + full admin CMS config.
+
+### 2026-01-25 · Session 2 (this)
+- **Data layer**: 4-tier plan matrix (Free/Growth/Pro/Enterprise), store/employee limits
+  enforced, role field on employees (`owner|manager|employee`), `ROLE_PRESETS`,
+  cross-store aggregation helpers (`getVendorTransactions`, `getPerStoreStats`,
+  `getEmployeePerformance`, `computeKPIs`, `getAllowedStorefronts`).
+- **Hooks folder**: 10 custom hooks encapsulating all data-fetching + mutations,
+  ready for the HTTP adapter swap.
+- **Presentational components**: `StatCard`, `PeriodFilter`, `StoreFilter`,
+  `PerStoreBreakdown`, `EmployeePerformanceTable`.
+- **Container refactors**: `OverviewPage`, `InsightsPage`, `TeamPage`, `OrdersPage`,
+  `BookingsPage` all rewritten around hooks; heavy logic gone from pages.
+- **New Owner consolidated dashboard**: cross-store KPIs + per-store breakdown + period
+  filter + storefront filter.
+- **Employee performance panel**: shown on Team and Insights pages.
+- **URL-level RBAC**: `<RequireOwner>` and `<RequirePermission>` guards on every
+  restricted route.
+- **Store Manager role**: role selector in the Team modal with two presets.
+- **Admin Plan Matrix editor**: `/admin/plans` — toggle features + set limits per tier.
+- **Admin Business Detail**: added Enterprise tier button + shows computed limits under
+  the plan buttons.
+
+## Backlog / Next tasks
+- P1: Backend + real REST endpoints (swap `REACT_APP_USE_MOCK_API=false`)
+- P1: Stripe / Razorpay for actual plan upgrades
+- P1: WhatsApp integration for order/booking notifications
 - P2: Custom domain per storefront
-- P2: More business types (Gym, Pharmacy, Grocery, Bakery, etc.)
+- P2: More business types (Gym, Pharmacy, Grocery, Bakery, Boutique, Spa, Clinic,
+  Academies, Rental & Property)
+- P2: Employee shift scheduling + attendance tracking
+- P2: Reviews & ratings, coupons
 
 ## Test credentials
-- **Platform admin**: `admin@vyapar360.com` / `admin123`
-- **Vendor (Restaurant)**: `owner@pizzahub.com` / `demo1234`
-- **Vendor (Salon)**: `owner@stylesalon.com` / `demo1234`
+See `/app/memory/test_credentials.md`.
