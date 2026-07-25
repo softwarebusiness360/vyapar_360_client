@@ -15,6 +15,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import Logo from "../../components/Logo";
+import ThemeToggle from "../../components/ThemeToggle";
 import { useAdminAuth } from "../../lib/adminAuth";
 
 export default function AdminLayout() {
@@ -81,7 +82,11 @@ export default function AdminLayout() {
             {items.map((it) => <SidebarLink key={it.to} {...it} />)}
           </nav>
 
-          <div className="p-3 border-t border-line">
+          <div className="p-3 border-t border-line space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[10px] uppercase tracking-widest text-ink-muted">Theme</span>
+              <ThemeToggle variant="icon" testid="admin-theme-toggle" />
+            </div>
             <button
               onClick={doLogout}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-secondary hover:bg-white/5 hover:text-ink-primary transition-colors"

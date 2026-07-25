@@ -130,3 +130,16 @@ See `/app/memory/test_credentials.md`.
   - Deep-linked via `/#ai-insights`; the new "AI Copilot" item also appears in the PublicHeader drawer's Explore section.
 
 - **Chat widget z-index fix**: `ChatSupport` toggle now sits at `z-50` (above the panel's `z-40`) and the panel width is `sm:w-[380px]` on desktop (was `w-[92vw]` and hitting the toggle's hit-area). The floating button can now open **and** close the panel reliably. Verified via headless browser: opening → clicking the same button closes it.
+
+### 2026-01-25 · Session 5
+**Global light/dark theming**
+
+- **Theme system**: Migrated Tailwind colors to CSS variables (shadcn-style `hsl(var(--…))`). Both dark and light themes are defined in `index.css` under `:root` and `[data-theme="light"]` selectors — swapping `data-theme` on `<html>` flips the entire app.
+- **`src/lib/theme.jsx`**: `ThemeProvider` + `useTheme()` hook. Reads system preference on first paint, then honours the user's explicit choice (persisted at `localStorage.vyapar360.theme`). Also sets `color-scheme` so native scrollbars/form controls invert.
+- **`src/components/ThemeToggle.jsx`**: reusable toggle with two variants — `pill` (Dark | Light chips, used in the hamburger drawer) and `icon` (compact button, used in vendor + admin sidebars).
+- **Wired everywhere**:
+  - `App.js` wrapped in `ThemeProvider`, Sonner Toaster now theme-aware.
+  - `NavDrawer` shows an Appearance row at the top of the drawer body (works on landing / discover / storefront / customer profile).
+  - `AdminLayout` + `VendorDashboardLayout` sidebars have an icon-variant toggle above Sign-out.
+- All existing component-classes (`.card-surface`, `.btn-primary`, `.btn-ghost`, `.input-field`, `.tag`, `.glass`, `.grain`) now use CSS variables — no hardcoded colors. Everything from the landing page through admin/vendor dashboards + customer profile inherits the theme automatically.
+- Verified visually: landing hero, AI Insights section (streaming terminal + capability cards), Pricing section (billing toggle + plan cards), and admin sidebar all render cleanly in light mode. Theme survives full-page reload.

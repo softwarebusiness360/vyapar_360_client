@@ -41,6 +41,7 @@ import CustomerProfilePage from "./pages/customer/CustomerProfilePage";
 import NotFoundPage from "./pages/NotFoundPage";
 import { RequireOwner, RequirePermission } from "./lib/rbac";
 import { CustomerAuthProvider } from "./lib/customerAuth";
+import { ThemeProvider, useTheme } from "./lib/theme";
 import ChatSupport from "./components/ChatSupport";
 import { useLocation } from "react-router-dom";
 
@@ -53,6 +54,23 @@ function ChatSupportGlobal() {
     || pathname.startsWith("/store/");
   if (!isCustomerRoute) return null;
   return <ChatSupport />;
+}
+
+function ThemedToaster() {
+  const { theme } = useTheme();
+  return (
+    <Toaster
+      theme={theme}
+      position="top-right"
+      toastOptions={{
+        style: {
+          background: "hsl(var(--bg-surface))",
+          border: "1px solid hsl(var(--line))",
+          color: "hsl(var(--ink-primary))",
+        },
+      }}
+    />
+  );
 }
 
 function RequireAuth({ children, requireOnboarded = false }) {
@@ -89,21 +107,12 @@ function RedirectIfAdmin({ children }) {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <AdminAuthProvider>
         <CustomerAuthProvider>
         <BrowserRouter>
-          <Toaster
-            theme="dark"
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: "#141417",
-                border: "1px solid #27272a",
-                color: "#f3f4f6",
-              },
-            }}
-          />
+          <ThemedToaster />
           <Routes>
             {/* Marketing */}
             <Route path="/" element={<LandingPage />} />
@@ -183,5 +192,6 @@ export default function App() {
         </CustomerAuthProvider>
       </AdminAuthProvider>
     </AuthProvider>
+    </ThemeProvider>
   );
 }

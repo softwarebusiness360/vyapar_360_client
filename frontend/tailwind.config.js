@@ -14,22 +14,24 @@ module.exports = {
         sans: ['"Manrope"', "system-ui", "sans-serif"],
       },
       colors: {
+        // Themeable via CSS variables — swap at :root vs [data-theme="light"]
         bg: {
-          base: "#0a0a0c",
-          surface: "#141417",
-          elevated: "#1c1c21",
+          base: "hsl(var(--bg-base) / <alpha-value>)",
+          surface: "hsl(var(--bg-surface) / <alpha-value>)",
+          elevated: "hsl(var(--bg-elevated) / <alpha-value>)",
         },
-        line: "#27272a",
+        line: "hsl(var(--line) / <alpha-value>)",
         ink: {
-          primary: "#f3f4f6",
-          secondary: "#a1a1aa",
-          muted: "#71717a",
+          primary: "hsl(var(--ink-primary) / <alpha-value>)",
+          secondary: "hsl(var(--ink-secondary) / <alpha-value>)",
+          muted: "hsl(var(--ink-muted) / <alpha-value>)",
         },
         brand: {
-          DEFAULT: "#6366f1",
-          hover: "#4f46e5",
-          soft: "rgba(99,102,241,0.12)",
+          DEFAULT: "hsl(var(--brand) / <alpha-value>)",
+          hover: "hsl(var(--brand-hover) / <alpha-value>)",
+          soft: "hsl(var(--brand) / 0.12)",
         },
+        // Static accent colors — same across both themes
         restaurant: "#f97316",
         salon: "#f59e0b",
         success: "#10b981",
@@ -50,7 +52,7 @@ module.exports = {
         shimmer: "shimmer 2.5s linear infinite",
       },
       boxShadow: {
-        glow: "0 8px 40px -12px rgba(99,102,241,0.35)",
+        glow: "0 8px 40px -12px hsl(var(--brand) / 0.35)",
         card: "0 1px 0 0 rgba(255,255,255,0.03) inset",
       },
     },

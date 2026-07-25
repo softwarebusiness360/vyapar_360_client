@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { X, ArrowRight } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 
 /**
  * NavDrawer — reusable slide-in menu.
@@ -111,6 +112,14 @@ function DrawerHeader({ title, onClose }) {
 function DrawerBody({ sections, onClose }) {
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-6">
+      {/* Theme toggle — persists globally */}
+      <div className="flex items-center justify-between rounded-xl border border-line bg-bg-elevated/50 px-3 py-3">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-widest text-ink-muted">Appearance</div>
+          <div className="mt-0.5 text-sm text-ink-primary">Dark or light theme</div>
+        </div>
+        <ThemeToggle testid="drawer-theme-toggle" />
+      </div>
       {sections.map((section, si) => (
         <section key={section.title || si} data-testid={`nav-drawer-section-${si}`}>
           {section.title && (

@@ -17,6 +17,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import Logo from "../../components/Logo";
+import ThemeToggle from "../../components/ThemeToggle";
 import { useAuth } from "../../lib/auth";
 
 export default function VendorDashboardLayout() {
@@ -119,6 +120,10 @@ export default function VendorDashboardLayout() {
             >
               <ExternalLink className="h-4 w-4" /> View storefront
             </a>
+            <div className="flex items-center justify-between px-3 py-2">
+              <span className="text-[10px] uppercase tracking-widest text-ink-muted">Theme</span>
+              <ThemeToggle variant="icon" testid="vendor-theme-toggle" />
+            </div>
             <button
               onClick={doLogout}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-secondary hover:bg-white/5 hover:text-ink-primary transition-colors"
