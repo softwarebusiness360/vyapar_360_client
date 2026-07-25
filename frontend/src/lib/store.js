@@ -603,11 +603,31 @@ export const DEFAULT_LANDING_CONFIG = {
     { value: "24/7", label: "Storefront uptime" },
     { value: "∞", label: "Products & services" },
   ],
+  pricing: {
+    eyebrow: "Simple pricing",
+    title: "Start free. Grow when you're ready.",
+    subtitle:
+      "No commission on orders. No lock-in. Cancel anytime. Pick the plan that matches your business today — upgrade when you outgrow it.",
+    currencySymbol: "₹",
+    showBillingToggle: true,
+    defaultBilling: "monthly", // "monthly" | "annual"
+    monthlyLabel: "Monthly",
+    annualLabel: "Annual",
+    annualBadge: "Save up to 20%",
+    annualNote: "Billed yearly · Cancel anytime",
+    monthlyNote: "Billed monthly · Cancel anytime",
+    footerNotes: [
+      { icon: "credit-card", text: "UPI · Cards · Netbanking" },
+      { icon: "message-circle", text: "WhatsApp support" },
+      { icon: "globe", text: "Made in India, for India" },
+    ],
+  },
   plans: [
     {
       id: "free",
       name: "Starter",
-      price: 0,
+      monthlyPrice: 0,
+      annualPrice: 0, // per-month price when billed annually
       priceSuffix: "forever",
       tagline: "Test the waters, no strings.",
       badge: "",
@@ -629,7 +649,8 @@ export const DEFAULT_LANDING_CONFIG = {
     {
       id: "growth",
       name: "Growth",
-      price: 499,
+      monthlyPrice: 499,
+      annualPrice: 415, // per-month price when billed annually (~17% off)
       priceSuffix: "/month",
       tagline: "For businesses ready to scale.",
       badge: "Most popular",
@@ -651,7 +672,8 @@ export const DEFAULT_LANDING_CONFIG = {
     {
       id: "pro",
       name: "Pro",
-      price: 999,
+      monthlyPrice: 999,
+      annualPrice: 799, // ~20% off
       priceSuffix: "/month",
       tagline: "For multi-outlet brands & franchises.",
       badge: "Best value",
@@ -682,11 +704,34 @@ export const DEFAULT_LANDING_CONFIG = {
 export function getLandingConfig() {
   const saved = read(KEYS.landing, null);
   if (!saved) return DEFAULT_LANDING_CONFIG;
-  // Shallow-merge to survive additive schema changes
+  // Merge additive schema changes (hero, pricing) and back-fill legacy plans
+  // that only had `price` -> upgrade to monthlyPrice/annualPrice.
+  const mergedPricing = { ...DEFAULT_LANDING_CONFIG.pricing, ...(saved.pricing || {}) };
+  const savedPlans = Array.isArray(saved.plans) ? saved.plans : DEFAULT_LANDING_CONFIG.plans;
+  const plans = savedPlans.map((p) => {
+    const dflt =
+      DEFAULT_LANDING_CONFIG.plans.find((d) => d.id === p.id) ||
+      DEFAULT_LANDING_CONFIG.plans[0];
+    const monthlyPrice =
+      typeof p.monthlyPrice === "number"
+        ? p.monthlyPrice
+        : typeof p.price === "number"
+          ? p.price
+          : dflt.monthlyPrice;
+    const annualPrice =
+      typeof p.annualPrice === "number"
+        ? p.annualPrice
+        : typeof p.price === "number"
+          ? p.price
+          : dflt.annualPrice;
+    return { ...dflt, ...p, monthlyPrice, annualPrice };
+  });
   return {
     ...DEFAULT_LANDING_CONFIG,
     ...saved,
     hero: { ...DEFAULT_LANDING_CONFIG.hero, ...(saved.hero || {}) },
+    pricing: mergedPricing,
+    plans,
   };
 }
 export function saveLandingConfig(cfg) {

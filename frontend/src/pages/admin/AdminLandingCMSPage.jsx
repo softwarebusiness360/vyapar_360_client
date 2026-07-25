@@ -23,6 +23,23 @@ export default function AdminLandingCMSPage() {
   };
 
   const setHero = (k, v) => setCfg({ ...cfg, hero: { ...cfg.hero, [k]: v } });
+  const setPricing = (k, v) => setCfg({ ...cfg, pricing: { ...cfg.pricing, [k]: v } });
+  const setFooterNote = (idx, k, v) => {
+    const footerNotes = (cfg.pricing.footerNotes || []).map((n, i) =>
+      i === idx ? { ...n, [k]: v } : n,
+    );
+    setPricing("footerNotes", footerNotes);
+  };
+  const addFooterNote = () =>
+    setPricing("footerNotes", [
+      ...(cfg.pricing.footerNotes || []),
+      { icon: "credit-card", text: "New note" },
+    ]);
+  const removeFooterNote = (idx) =>
+    setPricing(
+      "footerNotes",
+      (cfg.pricing.footerNotes || []).filter((_, i) => i !== idx),
+    );
   const setPlanField = (idx, k, v) => {
     const plans = cfg.plans.map((p, i) => (i === idx ? { ...p, [k]: v } : p));
     setCfg({ ...cfg, plans });
@@ -107,6 +124,70 @@ export default function AdminLandingCMSPage() {
         </div>
       </Section>
 
+      {/* Pricing section (heading, toggle & footer) */}
+      <Section title="Pricing section">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Row label="Eyebrow"><input className="input-field" value={cfg.pricing.eyebrow} onChange={(e) => setPricing("eyebrow", e.target.value)} data-testid="cms-pricing-eyebrow" /></Row>
+          <Row label="Currency symbol"><input className="input-field" value={cfg.pricing.currencySymbol} onChange={(e) => setPricing("currencySymbol", e.target.value)} data-testid="cms-pricing-currency" /></Row>
+          <Row label="Title" className="sm:col-span-2"><input className="input-field" value={cfg.pricing.title} onChange={(e) => setPricing("title", e.target.value)} data-testid="cms-pricing-title" /></Row>
+          <Row label="Subtitle" className="sm:col-span-2">
+            <textarea className="input-field min-h-[80px] resize-y" value={cfg.pricing.subtitle} onChange={(e) => setPricing("subtitle", e.target.value)} data-testid="cms-pricing-subtitle" />
+          </Row>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-line/60">
+          <div className="text-[11px] uppercase tracking-widest text-ink-muted mb-3">Billing toggle</div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex items-center gap-2 rounded-lg border border-line bg-bg-elevated px-3 py-2 cursor-pointer" data-testid="cms-pricing-show-toggle">
+              <input
+                type="checkbox"
+                checked={!!cfg.pricing.showBillingToggle}
+                onChange={(e) => setPricing("showBillingToggle", e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              <span className="text-sm text-ink-primary">Show monthly / annual toggle</span>
+            </label>
+            <Row label="Default billing cycle">
+              <select
+                className="input-field !py-2"
+                value={cfg.pricing.defaultBilling}
+                onChange={(e) => setPricing("defaultBilling", e.target.value)}
+                data-testid="cms-pricing-default-billing"
+              >
+                <option value="monthly">Monthly</option>
+                <option value="annual">Annual</option>
+              </select>
+            </Row>
+            <Row label="Monthly label"><input className="input-field !py-2" value={cfg.pricing.monthlyLabel} onChange={(e) => setPricing("monthlyLabel", e.target.value)} data-testid="cms-pricing-monthly-label" /></Row>
+            <Row label="Annual label"><input className="input-field !py-2" value={cfg.pricing.annualLabel} onChange={(e) => setPricing("annualLabel", e.target.value)} data-testid="cms-pricing-annual-label" /></Row>
+            <Row label="Annual savings badge"><input className="input-field !py-2" value={cfg.pricing.annualBadge} onChange={(e) => setPricing("annualBadge", e.target.value)} placeholder="e.g. Save up to 20%" data-testid="cms-pricing-annual-badge" /></Row>
+            <Row label="Monthly plan hint"><input className="input-field !py-2" value={cfg.pricing.monthlyNote} onChange={(e) => setPricing("monthlyNote", e.target.value)} /></Row>
+          </div>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-line/60">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] uppercase tracking-widest text-ink-muted">Footer notes (under plans)</div>
+            <button onClick={addFooterNote} className="btn-ghost inline-flex items-center gap-2 text-xs !py-1.5" data-testid="cms-pricing-footer-add"><Plus className="h-3.5 w-3.5" /> Add</button>
+          </div>
+          <div className="space-y-2">
+            {(cfg.pricing.footerNotes || []).map((n, i) => (
+              <div key={i} className="grid grid-cols-[130px_1fr_auto] gap-2 items-center rounded-lg border border-line bg-bg-elevated p-2" data-testid={`cms-pricing-footer-note-${i}`}>
+                <select className="input-field !py-2" value={n.icon} onChange={(e) => setFooterNote(i, "icon", e.target.value)}>
+                  <option value="credit-card">Credit card</option>
+                  <option value="message-circle">Message</option>
+                  <option value="globe">Globe</option>
+                </select>
+                <input className="input-field !py-2" value={n.text} onChange={(e) => setFooterNote(i, "text", e.target.value)} />
+                <button onClick={() => removeFooterNote(i)} className="h-8 w-8 grid place-items-center rounded-md text-ink-muted hover:text-red-400" aria-label="Remove">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
       {/* Plans */}
       <Section title="Pricing plans">
         <div className="grid gap-4 md:grid-cols-3">
@@ -120,8 +201,29 @@ export default function AdminLandingCMSPage() {
               </div>
               <Row label="Name"><input className="input-field !py-2" value={p.name} onChange={(e) => setPlanField(i, "name", e.target.value)} data-testid={`cms-plan-name-${p.id}`} /></Row>
               <div className="grid grid-cols-2 gap-2">
-                <Row label="Price (₹)"><input type="number" className="input-field !py-2" value={p.price} onChange={(e) => setPlanField(i, "price", Number(e.target.value))} data-testid={`cms-plan-price-${p.id}`} /></Row>
+                <Row label={`Monthly price (${cfg.pricing.currencySymbol})`}>
+                  <input type="number" min="0" className="input-field !py-2" value={p.monthlyPrice} onChange={(e) => setPlanField(i, "monthlyPrice", Number(e.target.value))} data-testid={`cms-plan-monthly-${p.id}`} />
+                </Row>
+                <Row label={`Annual price / mo (${cfg.pricing.currencySymbol})`}>
+                  <input type="number" min="0" className="input-field !py-2" value={p.annualPrice} onChange={(e) => setPlanField(i, "annualPrice", Number(e.target.value))} data-testid={`cms-plan-annual-${p.id}`} />
+                </Row>
+              </div>
+              <div className="text-[10px] text-ink-muted -mt-1">
+                {p.monthlyPrice > 0 && p.annualPrice > 0 && p.annualPrice < p.monthlyPrice ? (
+                  <>Annual billed as {cfg.pricing.currencySymbol}{(p.annualPrice * 12).toLocaleString("en-IN")} · saves {Math.round(((p.monthlyPrice - p.annualPrice) / p.monthlyPrice) * 100)}%</>
+                ) : (
+                  <>Set annual &lt; monthly to auto-show a savings badge.</>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <Row label="Price suffix"><input className="input-field !py-2" value={p.priceSuffix} onChange={(e) => setPlanField(i, "priceSuffix", e.target.value)} /></Row>
+                <Row label="Icon">
+                  <select className="input-field !py-2" value={p.icon} onChange={(e) => setPlanField(i, "icon", e.target.value)}>
+                    <option value="sparkles">Sparkles</option>
+                    <option value="zap">Zap</option>
+                    <option value="crown">Crown</option>
+                  </select>
+                </Row>
               </div>
               <Row label="Tagline"><input className="input-field !py-2" value={p.tagline} onChange={(e) => setPlanField(i, "tagline", e.target.value)} /></Row>
               <div className="grid grid-cols-2 gap-2">

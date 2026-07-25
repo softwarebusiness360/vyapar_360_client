@@ -41,6 +41,11 @@ import { Container, Section } from "../../components/Container";
 import { getLandingConfig, seedIfNeeded } from "../../lib/store";
 
 const PLAN_ICONS = { sparkles: Sparkles, zap: Zap, crown: Crown };
+const FOOTER_NOTE_ICONS = {
+  "credit-card": CreditCard,
+  "message-circle": MessageCircle,
+  globe: Globe,
+};
 
 const featureList = [
   {
@@ -168,7 +173,9 @@ export default function LandingPage() {
   }, []);
 
   if (!cfg) return null;
-  const { hero, stats, plans, faqs } = cfg;
+  const { hero, stats, plans, faqs, pricing } = cfg;
+  const [billing, setBilling] = useState(pricing?.defaultBilling === "annual" ? "annual" : "monthly");
+  const currency = pricing?.currencySymbol || "₹";
   return (
     <div className="min-h-screen flex flex-col">
       <PublicHeader />
@@ -492,23 +499,70 @@ export default function LandingPage() {
         <Container>
           <div className="text-center max-w-2xl mx-auto">
             <span className="text-sm uppercase tracking-widest text-brand">
-              Simple pricing
+              {pricing.eyebrow}
             </span>
             <h2
               className="mt-3 text-4xl sm:text-5xl font-display font-medium tracking-tighter"
               data-testid="pricing-title"
             >
-              Start free. Grow when you're ready.
+              {pricing.title}
             </h2>
-            <p className="mt-4 text-ink-secondary">
-              No commission on orders. No lock-in. Cancel anytime.
-              <br className="hidden sm:block" />
-              Pick the plan that matches your business today — upgrade when you
-              outgrow it.
+            <p className="mt-4 text-ink-secondary whitespace-pre-line">
+              {pricing.subtitle}
             </p>
           </div>
 
-          <div className="mt-14 grid md:grid-cols-3 gap-4 lg:gap-6">
+          {/* Billing toggle */}
+          {pricing.showBillingToggle && (
+            <div className="mt-10 flex items-center justify-center">
+              <div
+                role="tablist"
+                aria-label="Billing period"
+                className="relative inline-flex items-center gap-1 rounded-full border border-line bg-bg-elevated p-1 shadow-inner"
+                data-testid="pricing-billing-toggle"
+              >
+                <button
+                  role="tab"
+                  aria-selected={billing === "monthly"}
+                  onClick={() => setBilling("monthly")}
+                  data-testid="pricing-billing-monthly"
+                  className={`relative z-10 px-5 py-2 text-sm rounded-full transition-colors ${
+                    billing === "monthly"
+                      ? "bg-white text-bg-base font-medium shadow-sm"
+                      : "text-ink-secondary hover:text-ink-primary"
+                  }`}
+                >
+                  {pricing.monthlyLabel}
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={billing === "annual"}
+                  onClick={() => setBilling("annual")}
+                  data-testid="pricing-billing-annual"
+                  className={`relative z-10 px-5 py-2 text-sm rounded-full transition-colors inline-flex items-center gap-2 ${
+                    billing === "annual"
+                      ? "bg-white text-bg-base font-medium shadow-sm"
+                      : "text-ink-secondary hover:text-ink-primary"
+                  }`}
+                >
+                  {pricing.annualLabel}
+                  {pricing.annualBadge && (
+                    <span
+                      className={`px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-widest rounded-full ${
+                        billing === "annual"
+                          ? "bg-emerald-500/15 text-emerald-700 border border-emerald-500/40"
+                          : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                      }`}
+                    >
+                      {pricing.annualBadge}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-12 grid md:grid-cols-3 gap-4 lg:gap-6">
             {plans.map((plan, i) => {
               const IconEl = PLAN_ICONS[plan.icon] || Sparkles;
               const highlight = plan.id === "growth";
@@ -518,6 +572,17 @@ export default function LandingPage() {
                   : plan.id === "pro"
                     ? "border-fuchsia-500/40"
                     : "border-line";
+
+              const monthly = Number(plan.monthlyPrice ?? plan.price ?? 0);
+              const annual = Number(plan.annualPrice ?? plan.price ?? 0);
+              const isFree = monthly === 0 && annual === 0;
+              const displayPrice = billing === "annual" ? annual : monthly;
+              const savePct =
+                monthly > 0 && annual > 0 && annual < monthly
+                  ? Math.round(((monthly - annual) / monthly) * 100)
+                  : 0;
+              const annualTotal = annual * 12;
+
               return (
                 <motion.div
                   key={plan.id}
@@ -574,20 +639,40 @@ export default function LandingPage() {
                   </div>
 
                   <div className="mt-8 flex items-baseline gap-1.5">
-                    <span className="text-ink-muted text-xl">₹</span>
+                    <span className="text-ink-muted text-xl">{currency}</span>
                     <span
-                      className="font-display text-5xl font-semibold tracking-tighter"
+                      className="font-display text-5xl font-semibold tracking-tighter tabular-nums"
                       data-testid={`pricing-price-${plan.id}`}
                     >
-                      {plan.price}
+                      {displayPrice.toLocaleString("en-IN")}
                     </span>
                     <span className="text-ink-muted text-sm ml-1">
                       {plan.priceSuffix}
                     </span>
                   </div>
-                  {plan.id !== "free" && (
+
+                  {isFree ? (
                     <div className="mt-1 text-[11px] text-ink-muted">
-                      Billed monthly · Cancel anytime
+                      No credit card required
+                    </div>
+                  ) : billing === "annual" ? (
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-muted">
+                      <span data-testid={`pricing-annual-total-${plan.id}`}>
+                        {currency}
+                        {annualTotal.toLocaleString("en-IN")} billed yearly
+                      </span>
+                      {savePct > 0 && (
+                        <span
+                          className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                          data-testid={`pricing-save-${plan.id}`}
+                        >
+                          Save {savePct}%
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-[11px] text-ink-muted">
+                      {pricing.monthlyNote}
                     </div>
                   )}
 
@@ -633,15 +718,18 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-ink-muted">
-            <span className="inline-flex items-center gap-1.5">
-              <CreditCard className="h-3.5 w-3.5" /> UPI · Cards · Netbanking
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp support
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5" /> Made in India, for India
-            </span>
+            {(pricing.footerNotes || []).map((n, i) => {
+              const NoteIcon = FOOTER_NOTE_ICONS[n.icon] || CreditCard;
+              return (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1.5"
+                  data-testid={`pricing-footer-note-${i}`}
+                >
+                  <NoteIcon className="h-3.5 w-3.5" /> {n.text}
+                </span>
+              );
+            })}
           </div>
         </Container>
       </Section>
