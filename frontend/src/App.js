@@ -34,8 +34,26 @@ import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
 import AdminLandingCMSPage from "./pages/admin/AdminLandingCMSPage";
 import AdminPlansPage from "./pages/admin/AdminPlansPage";
+import AdminOnboardPage from "./pages/admin/AdminOnboardPage";
+import AdminPersonaMatrixPage from "./pages/admin/AdminPersonaMatrixPage";
+import VendorProfilePage from "./pages/vendor/VendorProfilePage";
+import CustomerProfilePage from "./pages/customer/CustomerProfilePage";
 import NotFoundPage from "./pages/NotFoundPage";
 import { RequireOwner, RequirePermission } from "./lib/rbac";
+import { CustomerAuthProvider } from "./lib/customerAuth";
+import ChatSupport from "./components/ChatSupport";
+import { useLocation } from "react-router-dom";
+
+function ChatSupportGlobal() {
+  const { pathname } = useLocation();
+  // Show only on customer-facing pages (landing, discover, storefront, customer profile)
+  const isCustomerRoute = pathname === "/"
+    || pathname === "/me"
+    || pathname === "/discover"
+    || pathname.startsWith("/store/");
+  if (!isCustomerRoute) return null;
+  return <ChatSupport />;
+}
 
 function RequireAuth({ children, requireOnboarded = false }) {
   const { vendor, employee, loading } = useAuth();
@@ -73,6 +91,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AdminAuthProvider>
+        <CustomerAuthProvider>
         <BrowserRouter>
           <Toaster
             theme="dark"
@@ -123,6 +142,7 @@ export default function App() {
               <Route path="storefronts/:sfId" element={<RequireOwner><StorefrontsPage /></RequireOwner>} />
               <Route path="team" element={<RequireOwner><TeamPage /></RequireOwner>} />
               <Route path="settings" element={<RequireOwner><StoreSettingsPage /></RequireOwner>} />
+              <Route path="profile" element={<VendorProfilePage />} />
             </Route>
 
             {/* Admin */}
@@ -142,7 +162,12 @@ export default function App() {
               <Route path="bookings" element={<AdminBookingsPage />} />
               <Route path="landing" element={<AdminLandingCMSPage />} />
               <Route path="plans" element={<AdminPlansPage />} />
+              <Route path="personas" element={<AdminPersonaMatrixPage />} />
+              <Route path="onboard" element={<AdminOnboardPage />} />
             </Route>
+
+            {/* Customer profile */}
+            <Route path="/me" element={<CustomerProfilePage />} />
 
             {/* Customer storefront */}
             <Route path="/store/:slug" element={<StorefrontPage />} />
@@ -153,7 +178,9 @@ export default function App() {
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          <ChatSupportGlobal />
         </BrowserRouter>
+        </CustomerAuthProvider>
       </AdminAuthProvider>
     </AuthProvider>
   );

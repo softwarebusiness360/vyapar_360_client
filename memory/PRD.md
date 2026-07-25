@@ -102,3 +102,19 @@ revenue. Rendered by `<EmployeePerformanceTable />` on both Team and Insights pa
 
 ## Test credentials
 See `/app/memory/test_credentials.md`.
+
+### 2026-01-25 · Session 3
+**Customer, Chat, Onboarding, Persona-Access, Multi-image & Product States, Dummy Logins**
+
+- **Customer auth (`src/lib/customerAuth.jsx` + `CustomerAuthModal.jsx`)**: name-only guest session or full sign-up with phone + mock OTP (`1234`). Persists to LocalStorage & customer DB.
+- **Customer profile page (`/me`)**: current + past orders in tabbed view, split by channel (online / walk-in). Shows verified vs guest state with an inline "Save my details" CTA.
+- **Vendor / Employee profile page (`/dashboard/profile`)**: works for owner, manager, employee. Employees see "My activity" — orders they took, bookings they managed, revenue driven. Owners see business snapshot.
+- **Order/booking channel**: every order/booking now carries `channel: "online" | "walk_in"` (POS defaults to walk_in). Customer profile can filter by channel.
+- **Product states**: `available | out_of_stock | coming_soon | not_available` with tone-coded badges shown on catalogue rows. Legacy `available:false` auto-migrates to `not_available`.
+- **Multi-image product editor**: gallery-style thumbnails with cover-image selection. Two modes: paste URL or upload from device (base64). Bulk file picker supported.
+- **Admin quick onboarding (`/admin/onboard`)**: Intake → mocked AI parse (2s loader) → editable table of pre-filled items → save creates vendor + storefront + catalogue + owner login. UI production-ready, vision-model integration hooked in later.
+- **Customer chat support widget**: floating bottom-left button, keyword-based auto-replies (`getAutoReply` in store.js), persistent transcript per customer. Rendered on landing / discover / storefront / customer profile only.
+- **Persona × feature matrix (`/admin/personas`)**: platform-admin toggle grid — which of 5 personas (owner/manager/employee/customer/admin) can see each of 12 features. Applies platform-wide.
+- **Dummy one-click logins**: login page now shows Owner / Manager / Employee chips for Pizza Hub, Owner / Manager for Style Salon, plus a "Try as customer" link → `/discover`.
+- **Seed data**: two demo employees pre-seeded (`manager@pizzahub.com` / `employee@pizzahub.com` / `manager@stylesalon.com`, all password `demo1234`). Their storefrontIds auto-fill via `withDefaults` when empty.
+- **PublicHeader**: `Customer sign-in` button in the header + avatar chip once signed in; drawer's "Customer" section adapts to the auth state.

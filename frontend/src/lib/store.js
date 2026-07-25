@@ -20,14 +20,43 @@ import { uid, slugify } from "./utils";
 const KEYS = {
   session: "vyapar360.session",
   adminSession: "vyapar360.admin_session",
+  customerSession: "vyapar360.customer_session",
   vendors: "vyapar360.vendors",
   admins: "vyapar360.admins",
+  customers: "vyapar360.customers",
   orders: "vyapar360.orders",
   bookings: "vyapar360.bookings",
   landing: "vyapar360.landing_config",
   planMatrix: "vyapar360.plan_matrix",
+  personaMatrix: "vyapar360.persona_matrix",
+  chats: "vyapar360.customer_chats",
   seed: "vyapar360.seed_done",
 };
+
+/* ---------------- Product stock states (customer-facing) ---------------- */
+
+export const PRODUCT_STATES = [
+  { id: "available",     label: "Available",     tone: "success",  canOrder: true  },
+  { id: "out_of_stock",  label: "Out of stock",  tone: "warning",  canOrder: false },
+  { id: "coming_soon",   label: "Coming soon",   tone: "info",     canOrder: false },
+  { id: "not_available", label: "Not available", tone: "danger",   canOrder: false },
+];
+
+export function getProductStateMeta(id) {
+  return PRODUCT_STATES.find((s) => s.id === id) || PRODUCT_STATES[0];
+}
+// Legacy `available: false` → treat as `not_available`. Otherwise fall back to `available`.
+export function normalizeProductState(item) {
+  if (item?.state && PRODUCT_STATES.some((s) => s.id === item.state)) return item.state;
+  if (item?.available === false) return "not_available";
+  return "available";
+}
+
+/* --------- Order/booking channel — walk-in (POS) vs online ---------- */
+export const CHANNELS = ["online", "walk_in"];
+export function normalizeChannel(c) {
+  return CHANNELS.includes(c) ? c : "online";
+}
 
 /* -------------- Plan matrix (admin-configurable) ------------------- */
 
@@ -148,6 +177,11 @@ function withDefaults(vendor) {
     employees: (vendor.employees || []).map((e) => ({
       role: e.role || "employee",
       ...e,
+      // Empty storefrontIds → assign to all storefronts (owner's default when
+      // seeding demo employees; explicit lists still win).
+      storefrontIds: (e.storefrontIds && e.storefrontIds.length > 0)
+        ? e.storefrontIds
+        : storefronts.map((s) => s.id),
       permissions: { ...ROLE_PRESETS[e.role || "employee"], ...(e.permissions || {}) },
     })),
     plan: defaultPlan,
@@ -383,6 +417,33 @@ export function seedIfNeeded() {
     },
   ];
 
+  // Seed demo team members for each vendor so role-based dummy logins work.
+  pizzaHub.employees = [
+    {
+      id: uid("emp"), email: "manager@pizzahub.com", password: "demo1234",
+      name: "Ravi Kumar", role: "manager",
+      storefrontIds: [], // will fill after storefronts materialise via withDefaults
+      permissions: { takeOrders: true, takeBookings: true, viewInsights: true, editCatalogue: true },
+      disabled: false, createdAt: now,
+    },
+    {
+      id: uid("emp"), email: "employee@pizzahub.com", password: "demo1234",
+      name: "Priya Sharma", role: "employee",
+      storefrontIds: [],
+      permissions: { takeOrders: true, takeBookings: true, viewInsights: false, editCatalogue: false },
+      disabled: false, createdAt: now,
+    },
+  ];
+  styleSalon.employees = [
+    {
+      id: uid("emp"), email: "manager@stylesalon.com", password: "demo1234",
+      name: "Neha Verma", role: "manager",
+      storefrontIds: [],
+      permissions: { takeOrders: true, takeBookings: true, viewInsights: true, editCatalogue: true },
+      disabled: false, createdAt: now,
+    },
+  ];
+
   write(KEYS.vendors, [pizzaHub, styleSalon]);
 
   // seed a couple of orders / bookings for realism
@@ -551,8 +612,10 @@ export function createOrder(order) {
     id: uid("ord"),
     code,
     status: "pending",
+    channel: normalizeChannel(order.channel),
     createdAt: new Date().toISOString(),
     ...order,
+    channel: normalizeChannel(order.channel), // ensure normalized after spread
   };
   all.unshift(o);
   write(KEYS.orders, all);
@@ -587,8 +650,10 @@ export function createBooking(booking) {
     id: uid("bkg"),
     code,
     status: "confirmed",
+    channel: normalizeChannel(booking.channel),
     createdAt: new Date().toISOString(),
     ...booking,
+    channel: normalizeChannel(booking.channel),
   };
   all.unshift(b);
   write(KEYS.bookings, all);
@@ -1066,3 +1131,192 @@ export function getAllowedStorefronts(vendor, employee) {
   return (vendor.storefronts || []).filter((s) => employee.storefrontIds.includes(s.id));
 }
 
+
+/* ================================================================== *
+ *  CUSTOMERS — name-only session, optional phone with mock OTP flow
+ * ================================================================== */
+
+// Any 4+ digit OTP is accepted (mocked). Default happy-path code is "1234".
+export const MOCK_OTP = "1234";
+
+export function getCustomers() {
+  return read(KEYS.customers, []);
+}
+export function getCustomerByPhone(phone) {
+  if (!phone) return null;
+  return getCustomers().find((c) => c.phone === phone) || null;
+}
+export function getCustomerById(id) {
+  return getCustomers().find((c) => c.id === id) || null;
+}
+export function saveCustomer(customer) {
+  const all = getCustomers();
+  const idx = all.findIndex((c) => c.id === customer.id);
+  if (idx >= 0) all[idx] = customer;
+  else all.push(customer);
+  write(KEYS.customers, all);
+  return customer;
+}
+
+/**
+ * Create or upgrade the current customer session. If only `name` is passed
+ * we keep a lightweight guest session (localStorage only, not in the DB).
+ * If `phone` + OTP are provided (and OTP is valid) we upsert into the DB.
+ */
+export function customerLogin({ name, phone, otp }) {
+  const cleanName = (name || "").trim();
+  if (!cleanName) throw new Error("Enter your name to continue.");
+
+  if (phone) {
+    if (!otp) throw new Error("Enter the OTP sent to your phone.");
+    if (otp.trim() !== MOCK_OTP && otp.trim().length < 4) {
+      throw new Error(`Invalid OTP. For demo, use ${MOCK_OTP}.`);
+    }
+    const cleanPhone = phone.trim();
+    const existing = getCustomerByPhone(cleanPhone);
+    const now = new Date().toISOString();
+    const customer = existing
+      ? { ...existing, name: cleanName, lastActiveAt: now }
+      : { id: uid("cust"), name: cleanName, phone: cleanPhone, createdAt: now, lastActiveAt: now };
+    saveCustomer(customer);
+    write(KEYS.customerSession, { id: customer.id, name: customer.name, phone: customer.phone, guest: false });
+    return customer;
+  }
+
+  // Guest — name only, session lives in localStorage
+  const guest = { id: "guest_" + Date.now(), name: cleanName, guest: true };
+  write(KEYS.customerSession, guest);
+  return guest;
+}
+
+export function getCustomerSession() {
+  return read(KEYS.customerSession, null);
+}
+export function customerLogout() {
+  localStorage.removeItem(KEYS.customerSession);
+}
+
+/** Save phone (post-login upgrade for guests). */
+export function upgradeCustomerToPhone({ phone, otp }) {
+  const session = getCustomerSession();
+  if (!session) throw new Error("No active customer session.");
+  if (!phone) throw new Error("Phone is required.");
+  if (!otp || (otp.trim() !== MOCK_OTP && otp.trim().length < 4)) {
+    throw new Error(`Invalid OTP. For demo, use ${MOCK_OTP}.`);
+  }
+  const cleanPhone = phone.trim();
+  const existing = getCustomerByPhone(cleanPhone);
+  const now = new Date().toISOString();
+  const customer = existing
+    ? { ...existing, name: session.name, lastActiveAt: now }
+    : { id: uid("cust"), name: session.name, phone: cleanPhone, createdAt: now, lastActiveAt: now };
+  saveCustomer(customer);
+  write(KEYS.customerSession, { id: customer.id, name: customer.name, phone: customer.phone, guest: false });
+  return customer;
+}
+
+/**
+ * Fetch a customer's orders/bookings. Matches by `customerId` OR falls back
+ * to phone/name for legacy records that pre-date the customer DB.
+ */
+export function getCustomerTransactions({ id, phone, name }) {
+  const matches = (rec) => {
+    if (id && rec.customerId === id) return true;
+    if (phone && rec.customer?.phone === phone) return true;
+    if (name && !phone && rec.customer?.name === name) return true;
+    return false;
+  };
+  const orders = read(KEYS.orders, []).filter(matches);
+  const bookings = read(KEYS.bookings, []).filter(matches);
+  return { orders, bookings };
+}
+
+/* ================================================================== *
+ *  Persona <-> feature visibility matrix (admin-configurable)
+ *  Simple map: `feature -> [personas that see it]`.
+ *  Personas: `owner | manager | employee | customer | admin`.
+ * ================================================================== */
+
+export const PERSONAS = ["owner", "manager", "employee", "customer", "admin"];
+
+export const FEATURE_CATALOG = [
+  { id: "overview",         label: "Dashboard overview" },
+  { id: "orders",           label: "Orders board" },
+  { id: "bookings",         label: "Bookings board" },
+  { id: "catalogue",        label: "Catalogue editor" },
+  { id: "pos",              label: "POS (walk-in orders)" },
+  { id: "insights",         label: "Business insights" },
+  { id: "team",             label: "Team management" },
+  { id: "storefronts",      label: "Storefronts management" },
+  { id: "settings",         label: "Store settings" },
+  { id: "profile",          label: "My profile" },
+  { id: "customer_profile", label: "Customer profile" },
+  { id: "chat_support",     label: "Chat support widget" },
+];
+
+export const DEFAULT_PERSONA_MATRIX = {
+  overview:         ["owner"],
+  orders:           ["owner", "manager", "employee"],
+  bookings:         ["owner", "manager", "employee"],
+  catalogue:        ["owner", "manager"],
+  pos:              ["owner", "manager", "employee"],
+  insights:         ["owner", "manager"],
+  team:             ["owner"],
+  storefronts:      ["owner"],
+  settings:         ["owner"],
+  profile:          ["owner", "manager", "employee"],
+  customer_profile: ["customer"],
+  chat_support:     ["customer"],
+};
+
+export function getPersonaMatrix() {
+  const saved = read(KEYS.personaMatrix, null);
+  if (!saved) return DEFAULT_PERSONA_MATRIX;
+  return { ...DEFAULT_PERSONA_MATRIX, ...saved };
+}
+export function savePersonaMatrix(m) {
+  write(KEYS.personaMatrix, m);
+  return m;
+}
+export function resetPersonaMatrix() {
+  localStorage.removeItem(KEYS.personaMatrix);
+  return DEFAULT_PERSONA_MATRIX;
+}
+export function isFeatureVisibleForPersona(featureId, persona) {
+  const m = getPersonaMatrix();
+  return (m[featureId] || []).includes(persona);
+}
+
+/* ================================================================== *
+ *  Chat support (customer-facing widget) — LocalStorage transcripts.
+ * ================================================================== */
+
+const AUTO_ANSWERS = [
+  { match: /(hi|hello|hey|namaste)/i,           reply: "Hi 👋 How can I help today? You can ask about orders, delivery, payments, or timings." },
+  { match: /(order|track|status)/i,             reply: "You can view live status on your profile. Tap the profile icon on your storefront." },
+  { match: /(delivery|deliver|when|reach)/i,    reply: "Most restaurants deliver within 30–45 minutes. Salons confirm bookings instantly." },
+  { match: /(refund|cancel|cancelled|return)/i, reply: "For refunds or cancellations, please reach out to the store directly from your order page." },
+  { match: /(payment|pay|upi|card)/i,           reply: "We accept UPI, cards, and net banking. Cash on delivery is at the store's discretion." },
+  { match: /(offer|discount|coupon)/i,          reply: "Occasional offers appear on each storefront's home page. Keep an eye out for badges!" },
+  { match: /(hour|open|close|timing)/i,         reply: "Timings vary by store. You'll find them on the storefront header." },
+  { match: /(bye|thanks|thank you|ok)/i,        reply: "Anytime! Have a great day 🌟" },
+];
+
+export function getAutoReply(text) {
+  const found = AUTO_ANSWERS.find((a) => a.match.test(text || ""));
+  return found ? found.reply : "Thanks for the message! We'll come back with a human answer soon. Meanwhile, try asking about orders, payments, or timings.";
+}
+
+export function getChatTranscript(customerId) {
+  const all = read(KEYS.chats, {});
+  return all[customerId] || [];
+}
+export function appendChat(customerId, message) {
+  const all = read(KEYS.chats, {});
+  const list = all[customerId] || [];
+  const entry = { ...message, id: uid("msg"), at: new Date().toISOString() };
+  list.push(entry);
+  all[customerId] = list;
+  write(KEYS.chats, all);
+  return entry;
+}

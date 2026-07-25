@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Search, ImagePlus, Folder } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, ImagePlus, Folder, X, Upload, Link as LinkIcon } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { formatINR, uid } from "../../lib/utils";
+import { PRODUCT_STATES, getProductStateMeta, normalizeProductState } from "../../lib/store";
 import Modal from "../../components/Modal";
 
 export default function CataloguePage() {
@@ -33,12 +34,18 @@ export default function CataloguePage() {
       duration: 30,
       categoryId: vendor.categories[0]?.id || "",
       image: "",
+      images: [],
+      state: "available",
       available: true,
     });
     setOpenItem(true);
   };
   const openEdit = (it) => {
-    setEditing({ ...it });
+    setEditing({
+      ...it,
+      images: it.images || (it.image ? [it.image] : []),
+      state: it.state || (it.available === false ? "not_available" : "available"),
+    });
     setOpenItem(true);
   };
 
@@ -48,14 +55,19 @@ export default function CataloguePage() {
     const price = Number(editing.price);
     if (!price || price < 0) return toast.error("Enter a valid price");
 
+    const images = (editing.images || []).filter(Boolean);
+    const primaryImage = images[0] || editing.image?.trim() || "";
+    const state = editing.state || "available";
     const cleaned = {
       id: editing.id || uid(isRestaurant ? "itm" : "svc"),
       name: editing.name.trim(),
       description: editing.description.trim(),
       price,
       categoryId: editing.categoryId,
-      image: editing.image.trim(),
-      available: editing.available,
+      image: primaryImage, // legacy field kept for back-compat
+      images,
+      state,
+      available: state === "available", // back-compat flag
       ...(isRestaurant ? {} : { duration: Number(editing.duration) || 30 }),
     };
     const key = isRestaurant ? "items" : "services";
@@ -202,7 +214,16 @@ export default function CataloguePage() {
                     <div className="min-w-0">
                       <div className="font-medium truncate flex items-center gap-2">
                         {it.name}
-                        {!it.available && <span className="tag !text-[10px] !py-0.5">Hidden</span>}
+                        {(() => {
+                          const s = normalizeProductState(it);
+                          if (s === "available") return null;
+                          const meta = getProductStateMeta(s);
+                          const tone =
+                            s === "out_of_stock" ? "!text-amber-300 !border-amber-500/40 !bg-amber-500/10" :
+                            s === "coming_soon"  ? "!text-brand !border-brand/40 !bg-brand-soft" :
+                            "!text-red-300 !border-red-500/40 !bg-red-500/10";
+                          return <span className={`tag !text-[10px] !py-0.5 ${tone}`} data-testid={`item-state-badge-${it.id}`}>{meta.label}</span>;
+                        })()}
                       </div>
                       <div className="text-xs text-ink-muted truncate">{it.description}</div>
                     </div>
@@ -276,13 +297,37 @@ export default function CataloguePage() {
               </FormRow>
               {isRestaurant && <div />}
             </div>
-            <FormRow label="Image URL">
-              <input className="input-field" value={editing.image} onChange={(e) => setEditing({ ...editing, image: e.target.value })} placeholder="https://..." data-testid="item-image-input" />
+            <FormRow label="Images">
+              <ImageEditor
+                images={editing.images || []}
+                onChange={(images) => setEditing({ ...editing, images })}
+              />
             </FormRow>
-            <label className="flex items-center gap-2 text-sm text-ink-secondary">
-              <input type="checkbox" checked={editing.available} onChange={(e) => setEditing({ ...editing, available: e.target.checked })} data-testid="item-available-checkbox" />
-              Available for customers
-            </label>
+            <FormRow label="Availability state">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {PRODUCT_STATES.map((s) => {
+                  const on = (editing.state || "available") === s.id;
+                  const tint =
+                    s.id === "available" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" :
+                    s.id === "out_of_stock" ? "border-amber-500/40 bg-amber-500/10 text-amber-300" :
+                    s.id === "coming_soon" ? "border-brand/40 bg-brand-soft text-brand" :
+                    "border-red-500/40 bg-red-500/10 text-red-300";
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setEditing({ ...editing, state: s.id })}
+                      data-testid={`item-state-${s.id}`}
+                      className={`text-xs px-2 py-2 rounded-lg border transition-colors ${
+                        on ? tint : "bg-bg-elevated border-line text-ink-secondary hover:text-ink-primary"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </FormRow>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setOpenItem(false)} className="btn-ghost">Cancel</button>
               <button onClick={saveItem} className="btn-primary" data-testid="save-item-btn">
@@ -357,6 +402,108 @@ function FormRow({ label, required, className = "", children }) {
         {required && <span className="text-restaurant ml-1">*</span>}
       </div>
       {children}
+    </div>
+  );
+}
+
+/**
+ * ImageEditor — thumbnail row + "upload from device" (base64) or "paste URL"
+ * modes. First image is the primary/cover for legacy consumers.
+ */
+function ImageEditor({ images, onChange }) {
+  const [mode, setMode] = useState("url"); // url | upload
+  const [url, setUrl] = useState("");
+  const fileRef = useRef(null);
+
+  const add = (src) => onChange([...(images || []), src]);
+  const remove = (i) => onChange(images.filter((_, idx) => idx !== i));
+  const promote = (i) => {
+    const next = [...images];
+    const [x] = next.splice(i, 1);
+    next.unshift(x);
+    onChange(next);
+  };
+
+  const onFile = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    let remaining = files.length;
+    files.forEach((f) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        onChange((prev) => Array.isArray(prev) ? [...prev, ev.target.result] : [ev.target.result]);
+        remaining -= 1;
+      };
+      reader.readAsDataURL(f);
+    });
+  };
+
+  const submitUrl = () => {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    add(trimmed);
+    setUrl("");
+  };
+
+  return (
+    <div className="space-y-3" data-testid="item-image-editor">
+      {images.length > 0 && (
+        <ul className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {images.map((src, i) => (
+            <li key={i} className="relative rounded-lg overflow-hidden border border-line group aspect-square bg-bg-elevated" data-testid={`item-image-${i}`}>
+              <img src={src} alt="" className="w-full h-full object-cover" />
+              {i === 0 && (
+                <span className="absolute top-1 left-1 tag !text-[9px] !py-0 !px-1.5 !text-emerald-300 !border-emerald-500/40 !bg-emerald-500/10">
+                  Cover
+                </span>
+              )}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center gap-1 flex-col">
+                {i !== 0 && (
+                  <button type="button" onClick={() => promote(i)} className="text-[10px] text-white bg-brand rounded px-1.5 py-0.5">Make cover</button>
+                )}
+                <button type="button" onClick={() => remove(i)} aria-label="Remove" className="text-white h-6 w-6 grid place-items-center rounded-full bg-red-500/80 hover:bg-red-500">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex gap-1 border border-line rounded-lg bg-bg-elevated p-1 w-fit">
+        <button type="button" onClick={() => setMode("url")} data-testid="item-image-mode-url" className={`text-xs px-2.5 py-1 rounded-md inline-flex items-center gap-1.5 ${mode === "url" ? "bg-white text-bg-base font-medium" : "text-ink-secondary"}`}>
+          <LinkIcon className="h-3 w-3" /> URL
+        </button>
+        <button type="button" onClick={() => setMode("upload")} data-testid="item-image-mode-upload" className={`text-xs px-2.5 py-1 rounded-md inline-flex items-center gap-1.5 ${mode === "upload" ? "bg-white text-bg-base font-medium" : "text-ink-secondary"}`}>
+          <Upload className="h-3 w-3" /> Upload
+        </button>
+      </div>
+
+      {mode === "url" ? (
+        <div className="flex gap-2">
+          <input
+            className="input-field !py-2 flex-1"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://..."
+            data-testid="item-image-url-input"
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitUrl(); } }}
+          />
+          <button type="button" onClick={submitUrl} className="btn-ghost text-xs" data-testid="item-image-url-add">
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="w-full py-4 rounded-lg border-2 border-dashed border-line hover:border-brand/40 text-ink-secondary text-xs inline-flex items-center justify-center gap-2 transition-colors"
+          data-testid="item-image-upload-btn"
+        >
+          <ImagePlus className="h-4 w-4" /> Click to pick images from your device
+        </button>
+      )}
+      <input ref={fileRef} type="file" accept="image/*" multiple onChange={onFile} hidden />
     </div>
   );
 }

@@ -11,6 +11,8 @@ import {
   X,
   ShieldCheck,
   BadgeDollarSign,
+  UserPlus,
+  KeyRound,
 } from "lucide-react";
 import Logo from "../../components/Logo";
 import { useAdminAuth } from "../../lib/adminAuth";
@@ -23,9 +25,11 @@ export default function AdminLayout() {
   const items = [
     { to: "/admin", icon: LayoutDashboard, label: "Overview", end: true, testid: "admin-nav-overview" },
     { to: "/admin/businesses", icon: Store, label: "Businesses", testid: "admin-nav-businesses" },
+    { to: "/admin/onboard", icon: UserPlus, label: "Onboard vendor", testid: "admin-nav-onboard" },
     { to: "/admin/orders", icon: Receipt, label: "All orders", testid: "admin-nav-orders" },
     { to: "/admin/bookings", icon: CalendarClock, label: "All bookings", testid: "admin-nav-bookings" },
     { to: "/admin/plans", icon: BadgeDollarSign, label: "Plan matrix", testid: "admin-nav-plans" },
+    { to: "/admin/personas", icon: KeyRound, label: "Persona access", testid: "admin-nav-personas" },
     { to: "/admin/landing", icon: Sparkles, label: "Landing CMS", testid: "admin-nav-landing" },
   ];
 

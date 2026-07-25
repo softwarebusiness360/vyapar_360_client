@@ -31,13 +31,16 @@ export default function LoginPage() {
   };
 
   const useDemo = (which) => {
-    if (which === "pizza") {
-      setEmail("owner@pizzahub.com");
-      setPassword("demo1234");
-    } else {
-      setEmail("owner@stylesalon.com");
-      setPassword("demo1234");
-    }
+    const map = {
+      pizza:            { email: "owner@pizzahub.com",    password: "demo1234" },
+      salon:            { email: "owner@stylesalon.com",  password: "demo1234" },
+      manager_pizza:    { email: "manager@pizzahub.com",  password: "demo1234" },
+      employee_pizza:   { email: "employee@pizzahub.com", password: "demo1234" },
+      manager_salon:    { email: "manager@stylesalon.com", password: "demo1234" },
+    };
+    const creds = map[which] || map.pizza;
+    setEmail(creds.email);
+    setPassword(creds.password);
   };
 
   return (
@@ -104,16 +107,40 @@ export default function LoginPage() {
 
           <div className="mt-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-line" />
-            <span className="text-xs text-ink-muted uppercase tracking-widest">Try a demo</span>
+            <span className="text-xs text-ink-muted uppercase tracking-widest">One-click demo logins</span>
             <div className="h-px flex-1 bg-line" />
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <button onClick={() => useDemo("pizza")} className="btn-ghost text-sm" data-testid="demo-login-pizza">
-              🍕 Pizza Hub
-            </button>
-            <button onClick={() => useDemo("salon")} className="btn-ghost text-sm" data-testid="demo-login-salon">
-              ✂️ Style Salon
-            </button>
+          <div className="mt-4 grid grid-cols-1 gap-2">
+            <div className="text-[10px] uppercase tracking-widest text-ink-muted">Restaurant (Pizza Hub)</div>
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={() => useDemo("pizza")} className="btn-ghost text-xs !py-2" data-testid="demo-login-pizza">
+                Owner
+              </button>
+              <button onClick={() => useDemo("manager_pizza")} className="btn-ghost text-xs !py-2" data-testid="demo-login-manager-pizza">
+                Manager
+              </button>
+              <button onClick={() => useDemo("employee_pizza")} className="btn-ghost text-xs !py-2" data-testid="demo-login-employee-pizza">
+                Employee
+              </button>
+            </div>
+            <div className="mt-2 text-[10px] uppercase tracking-widest text-ink-muted">Salon (Style Salon)</div>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => useDemo("salon")} className="btn-ghost text-xs !py-2" data-testid="demo-login-salon">
+                Owner
+              </button>
+              <button onClick={() => useDemo("manager_salon")} className="btn-ghost text-xs !py-2" data-testid="demo-login-manager-salon">
+                Manager
+              </button>
+            </div>
+            <div className="mt-3 rounded-lg border border-brand/30 bg-brand-soft/50 p-3">
+              <div className="text-[10px] uppercase tracking-widest text-brand mb-1">Customer</div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-ink-secondary">Shop as a customer (name-only)</span>
+                <Link to="/discover" className="text-xs text-brand hover:text-brand-hover font-medium inline-flex items-center gap-1" data-testid="demo-login-customer">
+                  Try as customer →
+                </Link>
+              </div>
+            </div>
           </div>
 
           <p className="mt-8 text-sm text-ink-secondary">

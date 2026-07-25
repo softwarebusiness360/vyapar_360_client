@@ -14,6 +14,7 @@ import {
   Store,
   Users,
   Zap,
+  UserCircle,
 } from "lucide-react";
 import Logo from "../../components/Logo";
 import { useAuth } from "../../lib/auth";
@@ -53,6 +54,8 @@ export default function VendorDashboardLayout() {
   if (isOwner) {
     items.push({ to: "/dashboard/settings", icon: Settings, label: "Store settings", testid: "nav-settings" });
   }
+  // Profile is available for every signed-in role
+  items.push({ to: "/dashboard/profile", icon: UserCircle, label: "My profile", testid: "nav-profile" });
 
   const doLogout = () => {
     logout();

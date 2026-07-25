@@ -10,11 +10,15 @@ import {
   Rocket,
   HelpCircle,
   Utensils,
+  User,
+  Receipt,
 } from "lucide-react";
 import Logo from "./Logo";
 import { Container } from "./Container";
 import NavDrawer from "./NavDrawer";
 import NavToggle from "./NavToggle";
+import { useCustomer } from "../lib/customerAuth";
+import CustomerAuthModal from "./CustomerAuthModal";
 
 /**
  * PublicHeader — sticky top header + reusable NavDrawer.
@@ -26,6 +30,22 @@ import NavToggle from "./NavToggle";
  */
 export default function PublicHeader() {
   const [open, setOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const { customer } = useCustomer() || {};
+
+  const customerSection = customer
+    ? {
+        title: `Signed in as ${customer.name}`,
+        items: [
+          { label: "My orders & bookings", description: "Live status of your orders", icon: Receipt, to: "/me" },
+        ],
+      }
+    : {
+        title: "Customer",
+        items: [
+          { label: "Sign in as customer", description: "Name-only, add phone anytime", icon: User, href: "#customer-signin" },
+        ],
+      };
 
   const sections = [
     {
@@ -52,6 +72,7 @@ export default function PublicHeader() {
         { label: "Start a free store", description: "Sign up — no credit card",     icon: Rocket,  to: "/register" },
       ],
     },
+    customerSection,
   ];
 
   const footer = (
@@ -90,12 +111,32 @@ export default function PublicHeader() {
           </nav>
 
           <div className="flex items-center gap-2">
+            {customer ? (
+              <Link
+                to="/me"
+                className="hidden sm:inline-flex items-center gap-2 h-10 pl-1 pr-3 rounded-full border border-line bg-bg-elevated hover:border-white/20 transition-colors"
+                data-testid="header-customer-me"
+              >
+                <span className="h-8 w-8 rounded-full bg-brand-soft border border-brand/30 grid place-items-center text-brand text-sm font-medium">
+                  {customer.name?.[0]?.toUpperCase() || "U"}
+                </span>
+                <span className="text-sm text-ink-secondary max-w-[100px] truncate">{customer.name}</span>
+              </Link>
+            ) : (
+              <button
+                onClick={() => setAuthOpen(true)}
+                className="hidden sm:inline-flex text-sm text-ink-secondary hover:text-ink-primary px-3 py-2 rounded-lg transition-colors items-center gap-1.5"
+                data-testid="header-customer-signin"
+              >
+                <User className="h-4 w-4" /> Customer sign-in
+              </button>
+            )}
             <Link
               to="/login"
               className="hidden sm:inline-flex text-sm text-ink-secondary hover:text-ink-primary px-3 py-2 rounded-lg transition-colors"
               data-testid="nav-login-btn"
             >
-              Sign in
+              Vendor sign in
             </Link>
             <Link
               to="/register"
@@ -105,16 +146,39 @@ export default function PublicHeader() {
               Get started
               <ArrowRight className="h-4 w-4" />
             </Link>
-            {/* Top hamburger — visible on desktop (per user request) and small screens */}
             <NavToggle onOpen={() => setOpen(true)} variant="top" testid="nav-toggle-top" />
           </div>
         </Container>
       </header>
 
-      {/* Floating bottom hamburger — mobile only, always reachable while scrolling */}
       <NavToggle onOpen={() => setOpen(true)} variant="floating" testid="nav-toggle-floating" />
 
-      <NavDrawer open={open} onClose={() => setOpen(false)} sections={sections} footer={footer} />
+      <NavDrawer
+        open={open}
+        onClose={() => setOpen(false)}
+        sections={sections}
+        footer={footer}
+      />
+
+      {/* Handle in-drawer "Sign in as customer" link */}
+      <AuthLinkListener onOpenAuth={() => { setOpen(false); setAuthOpen(true); }} />
+
+      <CustomerAuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
     </>
   );
+}
+
+function AuthLinkListener({ onOpenAuth }) {
+  React.useEffect(() => {
+    const onHash = () => {
+      if (window.location.hash === "#customer-signin") {
+        onOpenAuth();
+        // clear the hash so re-clicks work
+        setTimeout(() => history.replaceState(null, "", window.location.pathname + window.location.search), 100);
+      }
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, [onOpenAuth]);
+  return null;
 }

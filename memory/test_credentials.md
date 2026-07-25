@@ -1,31 +1,28 @@
 # Vyapar360 — Test Credentials
 
-All auth is LocalStorage-backed (mock) — accounts are seeded on first landing-page load
-via `seedIfNeeded()` in `src/lib/store.js`.
+All auth is LocalStorage-backed (mock). Seed runs on first landing-page load.
 
 ## Platform Admin (`/admin/login`)
-- Email: `admin@vyapar360.com`
-- Password: `admin123`
-- Role: `superadmin`
-- Access: Overview, Businesses, Orders, Bookings, **Landing CMS** (pricing config)
+- Email: `admin@vyapar360.com` · Password: `admin123` · Role: `superadmin`
 
-## Vendor — Restaurant (`/login`)
-- Email: `owner@pizzahub.com`
-- Password: `demo1234`
-- Business: Pizza Hub (Mumbai)
-- Plan: Pro
+## Vendors (`/login`) — one-click dummy logins on the sign-in page
+### Pizza Hub (Restaurant, Pro plan)
+- **Owner**: `owner@pizzahub.com` / `demo1234`
+- **Store Manager**: `manager@pizzahub.com` / `demo1234` (Ravi Kumar)
+- **Employee**: `employee@pizzahub.com` / `demo1234` (Priya Sharma)
 
-## Vendor — Salon (`/login`)
-- Email: `owner@stylesalon.com`
-- Password: `demo1234`
-- Business: Style Salon (Mumbai)
-- Plan: Pro
+### Style Salon (Salon, Pro plan)
+- **Owner**: `owner@stylesalon.com` / `demo1234`
+- **Store Manager**: `manager@stylesalon.com` / `demo1234` (Neha Verma)
 
-## Sample Store Manager (created in Session 2 demo)
-- Email: `ravi@pizzahub.com`
-- Password: `ravi1234`
-- Role: **manager** (near-owner access; no team/settings/billing)
-- Belongs to: Pizza Hub workspace
-- Note: You can safely delete/re-invite this from `/dashboard/team`.
+## Customer
+- No password. Enter name at any storefront → guest session.
+- Optional: click "Save my details" → phone + **OTP `1234`** (any 4+ digit works).
+- Customer profile: `/me` (must be signed in as a customer).
 
-The `/login` page also has one-click "Try a demo" shortcuts for both vendors.
+## Roles reference (RBAC)
+- **Business Owner**: full access to their workspace.
+- **Store Manager**: takeOrders + takeBookings + viewInsights + editCatalogue. No team/settings/billing.
+- **Employee**: takeOrders + takeBookings only.
+- **Platform Admin**: full platform-level control.
+- **Customer**: storefront + own orders/profile.
