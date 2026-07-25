@@ -118,3 +118,15 @@ See `/app/memory/test_credentials.md`.
 - **Dummy one-click logins**: login page now shows Owner / Manager / Employee chips for Pizza Hub, Owner / Manager for Style Salon, plus a "Try as customer" link → `/discover`.
 - **Seed data**: two demo employees pre-seeded (`manager@pizzahub.com` / `employee@pizzahub.com` / `manager@stylesalon.com`, all password `demo1234`). Their storefrontIds auto-fill via `withDefaults` when empty.
 - **PublicHeader**: `Customer sign-in` button in the header + avatar chip once signed in; drawer's "Customer" section adapts to the auth state.
+
+### 2026-01-25 · Session 4
+**AI-driven Insights section + chat-toggle z-index fix**
+
+- **New `AiInsightsSection`** on the landing page (`/#ai-insights`), inserted between Features and Pricing:
+  - Gradient headline "Your data **whispers.** AI answers." with brand→fuchsia→emerald tri-tone.
+  - "AI Copilot · Beta" eyebrow badge.
+  - LEFT: Live insights terminal with mac chrome + Pause/Play control (`ai-insights-pause`), streaming 4 pre-scripted insights (Demand forecast · Customer segment · Menu optimizer · Anomaly alert). Rows fade in one-by-one when the section enters the viewport; when the list is full, the "focused" row cycles every 3.2s.
+  - RIGHT: Active-insight card with tone-coded KPI (up/down arrow, gradient chip), an "Act on it" CTA, plus a 2×2 grid of capability cards.
+  - Deep-linked via `/#ai-insights`; the new "AI Copilot" item also appears in the PublicHeader drawer's Explore section.
+
+- **Chat widget z-index fix**: `ChatSupport` toggle now sits at `z-50` (above the panel's `z-40`) and the panel width is `sm:w-[380px]` on desktop (was `w-[92vw]` and hitting the toggle's hit-area). The floating button can now open **and** close the panel reliably. Verified via headless browser: opening → clicking the same button closes it.

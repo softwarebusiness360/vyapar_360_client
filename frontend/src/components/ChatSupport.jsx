@@ -50,7 +50,7 @@ export default function ChatSupport() {
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? "Close chat" : "Open chat support"}
         data-testid="chat-support-toggle"
-        className="fixed bottom-5 left-5 z-40 h-14 w-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-glow grid place-items-center border border-white/10 hover:-translate-y-0.5 transition-transform"
+        className="fixed bottom-5 left-5 z-50 h-14 w-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-glow grid place-items-center border border-white/10 hover:-translate-y-0.5 transition-transform"
       >
         {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
       </button>
@@ -60,7 +60,7 @@ export default function ChatSupport() {
         <aside
           role="dialog"
           aria-label="Chat support"
-          className="fixed bottom-24 left-5 z-40 w-[92vw] max-w-sm h-[70vh] max-h-[560px] bg-bg-surface border border-line grain rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+          className="fixed bottom-24 left-5 z-40 w-[calc(100vw-40px)] sm:w-[380px] max-w-sm h-[min(70vh,560px)] bg-bg-surface border border-line grain rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           data-testid="chat-support-panel"
         >
           {/* Header */}

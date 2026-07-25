@@ -52,6 +52,7 @@ export default function PublicHeader() {
       title: "Explore",
       items: [
         { label: "Features",       description: "What's included in every store", icon: Sparkles,   href: "/#features" },
+        { label: "AI Copilot",     description: "Insights that tell you what to do", icon: Sparkles, href: "/#ai-insights" },
         { label: "Pricing",        description: "Free, Growth, Pro, Enterprise",  icon: Tag,        href: "/#pricing" },
         { label: "Business types", description: "Restaurants, salons & more",     icon: LayoutGrid, href: "/#business-types" },
         { label: "How it works",   description: "From signup to first order",     icon: Rocket,     href: "/#how-it-works" },

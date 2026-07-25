@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import PublicHeader from "../../components/PublicHeader";
 import PublicFooter from "../../components/PublicFooter";
+import AiInsightsSection from "../../components/marketing/AiInsightsSection";
 import { Container, Section } from "../../components/Container";
 import { getLandingConfig, seedIfNeeded } from "../../lib/store";
 
@@ -493,6 +494,9 @@ export default function LandingPage() {
           </div>
         </Container>
       </Section>
+
+      {/* AI DRIVEN INSIGHTS */}
+      <AiInsightsSection />
 
       {/* PRICING */}
       <Section id="pricing" className="border-t border-line">
