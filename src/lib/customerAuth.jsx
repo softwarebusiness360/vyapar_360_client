@@ -1,12 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import {
-  customerLogin as _login,
-  customerLogout as _logout,
-  getCustomerSession,
-  getCustomerById,
-  upgradeCustomerToPhone as _upgrade,
-  MOCK_OTP,
-} from "./store";
+import * as repository from "@/data/authRepository";
 
 /**
  * CustomerAuth — lightweight session for storefront visitors.
@@ -19,6 +12,7 @@ const Ctx = createContext(null);
 export const useCustomer = () => useContext(Ctx);
 
 export function CustomerAuthProvider({ children }) {
+  const { customerLogin: _login, customerLogout: _logout, getCustomerSession, getCustomerById, upgradeCustomerToPhone: _upgrade, MOCK_OTP } = repository;
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 

@@ -8,7 +8,13 @@
  * Every function returns a Promise resolving to the same shape the http
  * adapter will return (see /API_CONTRACT.md).
  */
-import * as store from "../store";
+import * as auth from "@/data/authRepository";
+import * as business from "@/data/businessRepository";
+import * as orders from "@/data/orderRepository";
+import * as bookings from "@/data/bookingRepository";
+import * as configuration from "@/data/configurationRepository";
+
+const store = { ...auth, ...business, ...orders, ...bookings, ...configuration };
 
 // Simulated network latency (ms). Set 0 in tests, 100–200 in dev to catch races.
 const LATENCY_MS = 120;

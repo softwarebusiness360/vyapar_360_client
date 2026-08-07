@@ -36,3 +36,16 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# AI-DLC — per-user cursors and machine-local runtime state
+aidlc/active-space
+aidlc/spaces/*/intents/active-intent
+aidlc/.aidlc-clone-id
+aidlc/.aidlc-sessions/
+aidlc/spaces/*/intents/*/runtime-graph.json
+aidlc/spaces/*/intents/*/.aidlc-*
+aidlc/diagnostics/
+
+.agents
+.codex
+aidlc

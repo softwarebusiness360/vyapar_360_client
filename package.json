@@ -31,7 +31,9 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "test": "craco test"
+    "test": "craco test",
+    "architecture:check": "node scripts/check-boundaries.mjs",
+    "design-system:check": "node scripts/check-design-system.mjs"
   },
   "browserslist": {
     "production": [

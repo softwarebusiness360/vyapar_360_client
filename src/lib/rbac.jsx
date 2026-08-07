@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { evaluateRoute } from "../app/routes/routePolicy";
 
 /**
  * Route guards that enforce role-based access at the URL level.
@@ -12,9 +13,11 @@ import { useAuth } from "../lib/auth";
 export function RequireOwner({ children }) {
   const { vendor, loading, isOwner } = useAuth();
   if (loading) return null;
-  if (!vendor) return <Navigate to="/login" replace />;
-  if (!isOwner) return <Navigate to="/dashboard/pos" replace />;
-  return children;
+  const decision = evaluateRoute(
+    { guard: "owner" },
+    !vendor ? { kind: "anonymous" } : isOwner ? { kind: "vendor", onboarded: true } : { kind: "employee" }
+  );
+  return decision.outcome === "allow" ? children : <Navigate to={decision.to} replace />;
 }
 
 /**
@@ -26,9 +29,9 @@ export function RequireOwner({ children }) {
 export function RequirePermission({ perm, feature, children, fallback = "/dashboard/pos" }) {
   const { vendor, employee, loading, isOwner } = useAuth();
   if (loading) return null;
-  if (!vendor) return <Navigate to="/login" replace />;
+  if (!vendor) return <Navigate to={evaluateRoute({ guard: perm }).to} replace />;
   if (feature && !vendor.features?.[feature]) return <Navigate to="/dashboard" replace />;
   if (isOwner) return children;
-  if (perm && !employee?.permissions?.[perm]) return <Navigate to={fallback} replace />;
-  return children;
+  const decision = evaluateRoute({ guard: perm }, { kind: "employee", permissions: employee?.permissions || {} });
+  return decision.outcome === "allow" ? children : <Navigate to={fallback || decision.to} replace />;
 }

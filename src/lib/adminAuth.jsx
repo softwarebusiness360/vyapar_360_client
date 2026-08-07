@@ -1,16 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import {
-  getAdminByEmail,
-  getAdminById,
-  getAdminSession,
-  setAdminSession,
-  clearAdminSession,
-  seedIfNeeded,
-} from "./store";
+import * as repository from "@/data/authRepository";
 
 const AdminAuthContext = createContext(null);
 
 export function AdminAuthProvider({ children }) {
+  const { getAdminByEmail, getAdminById, getAdminSession, setAdminSession, clearAdminSession, seedIfNeeded } = repository;
   const [admin, setAdmin] = useState(null);
   const [loading, setLoading] = useState(true);
 

@@ -1,15 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import {
-  createVendor,
-  getSession,
-  getVendorByEmail,
-  getVendorById,
-  saveVendor,
-  setSession,
-  clearSession,
-  seedIfNeeded,
-  getEmployeeByEmail,
-} from "./store";
+import * as repository from "@/data/authRepository";
 
 const AuthContext = createContext(null);
 
@@ -20,6 +10,7 @@ const AuthContext = createContext(null);
  * All UI reads `vendor` (workspace) + `employee` (null for owners) + `role`.
  */
 export function AuthProvider({ children }) {
+  const { createVendor, getSession, getVendorByEmail, getVendorById, saveVendor, setSession, clearSession, seedIfNeeded, getEmployeeByEmail } = repository;
   const [vendor, setVendor] = useState(null);
   const [employee, setEmployee] = useState(null);
   const [role, setRole] = useState(null); // "owner" | "employee" | null
