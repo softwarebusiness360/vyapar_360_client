@@ -9,16 +9,6 @@ export const LANDING_GUIDE_ACTIONS = Object.freeze({
     label: "Start salon setup",
     to: "/register",
   }),
-  customerRestaurantDiscover: Object.freeze({
-    id: "customer-restaurant-discover",
-    label: "Discover restaurants",
-    to: "/discover",
-  }),
-  customerSalonDiscover: Object.freeze({
-    id: "customer-salon-discover",
-    label: "Discover salons",
-    to: "/discover",
-  }),
 });
 
 export const LANDING_GUIDE_ACTION_IDS = Object.freeze(

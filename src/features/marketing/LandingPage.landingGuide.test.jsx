@@ -38,9 +38,8 @@ const mountLanding = async () => {
   root = createRoot(container);
   await act(async () => root.render(<LandingHarness />));
 };
-const takePath = async (audience, business) => {
+const takePath = async (business) => {
   await click(byTestId("landing-guide-launcher"));
-  await click(byTestId(`landing-guide-option-${audience}`));
   await click(byTestId(`landing-guide-option-${business}`));
 };
 
@@ -66,36 +65,35 @@ test("mounts the guide on the landing page without replacing existing content", 
 });
 
 test.each([
-  ["owner", "restaurant", "owner-restaurant-register", "/register"],
-  ["owner", "salon", "owner-salon-register", "/register"],
-  ["customer", "restaurant", "customer-restaurant-discover", "/discover"],
-  ["customer", "salon", "customer-salon-discover", "/discover"],
-])("completes the landing-level four-action %s/%s path", async (audience, business, actionId, destination) => {
+  ["restaurant", "owner-restaurant-register"],
+  ["salon", "owner-salon-register"],
+])("completes the landing-level business %s path", async (business, actionId) => {
   await mountLanding();
-  await takePath(audience, business);
+  await takePath(business);
   await click(byTestId(`landing-guide-action-${actionId}`));
-  expect(byTestId("location-path").textContent).toBe(destination);
+  expect(byTestId("location-path").textContent).toBe("/register");
 });
 
-test("unmount and remount reset the guide to Audience", async () => {
+test("unmount and remount reset the guide to business selection", async () => {
   await mountLanding();
   await click(byTestId("landing-guide-launcher"));
-  await click(byTestId("landing-guide-option-owner"));
-  expect(byTestId("landing-guide-heading").textContent).toContain("business do you run");
+  await click(byTestId("landing-guide-option-salon"));
+  expect(byTestId("landing-guide-heading").textContent).toContain("salon business");
 
   await act(async () => root.unmount());
   root = null;
   container.replaceChildren();
   await mountLanding();
   await click(byTestId("landing-guide-launcher"));
-  expect(byTestId("landing-guide-heading").textContent).toContain("How can we guide you");
+  expect(byTestId("landing-guide-heading").textContent).toContain("business do you run");
+  expect(byTestId("landing-guide-option-customer")).toBeNull();
 });
 
 test("landing guide remains isolated from legacy ChatSupport state and controls", async () => {
   localStorage.setItem("vyapar360.customer_chats", JSON.stringify({ anon: [{ id: "legacy" }] }));
   const before = localStorage.getItem("vyapar360.customer_chats");
   await mountLanding();
-  await takePath("customer", "restaurant");
+  await takePath("restaurant");
   expect(container.querySelector('[data-testid="chat-support-toggle"]')).toBeNull();
   expect(container.querySelector('[data-testid="chat-input"]')).toBeNull();
   expect(localStorage.getItem("vyapar360.customer_chats")).toBe(before);
@@ -105,7 +103,7 @@ test("landing-level guide interaction performs no storage or network side effect
   await mountLanding();
   const storageSpy = jest.spyOn(Storage.prototype, "setItem");
   const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({});
-  await takePath("owner", "salon");
+  await takePath("salon");
   expect(storageSpy).not.toHaveBeenCalled();
   expect(fetchSpy).not.toHaveBeenCalled();
   jest.restoreAllMocks();
@@ -118,9 +116,8 @@ test("all terminal actions resolve to existing public route destinations", () =>
   }
 });
 
-test("keeps four distinct action IDs while reusing verified journey routes", () => {
+test("keeps two distinct business action IDs on the registration journey", () => {
   const actions = Object.values(LANDING_GUIDE_ACTIONS);
-  expect(new Set(actions.map(({ id }) => id)).size).toBe(4);
-  expect(actions.filter(({ to }) => to === "/register")).toHaveLength(2);
-  expect(actions.filter(({ to }) => to === "/discover")).toHaveLength(2);
+  expect(new Set(actions.map(({ id }) => id)).size).toBe(2);
+  expect(actions.every(({ to }) => to === "/register")).toBe(true);
 });

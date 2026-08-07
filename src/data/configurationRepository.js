@@ -6,6 +6,16 @@ export const PLAN_STORAGE_KEY = KEYS.planMatrix;
 export const LANDING_STORAGE_KEY = KEYS.landing;
 export const PERSONA_STORAGE_KEY = KEYS.personaMatrix;
 export const DEFAULT_LANDING_CONFIG = {
+  brand: { name: "Vyapar360", logoUrl: "" },
+  navigation: {
+    items: [
+      { id: "features", label: "Features", href: "/#features", visible: true },
+      { id: "pricing", label: "Pricing", href: "/#pricing", visible: true },
+      { id: "business-types", label: "Business Types", href: "/#business-types", visible: true },
+    ],
+    loginLabel: "Business login", loginTo: "/login",
+    ctaLabel: "Start free", ctaTo: "/register",
+  },
   hero: {
     eyebrow: "Now live for Restaurants & Salons in India",
     headlineLine1: "Your neighbourhood",
@@ -15,7 +25,9 @@ export const DEFAULT_LANDING_CONFIG = {
     subtitle:
       "Vyapar360 gives local businesses a ready-to-use digital storefront in minutes. No websites. No developers. No commission. Just orders and bookings.",
     ctaPrimary: "Launch your store — free",
+    ctaPrimaryTo: "/register",
     ctaSecondary: "See pricing",
+    ctaSecondaryTo: "#pricing",
     perks: ["Free forever plan", "0% commission on orders", "Setup in under 10 minutes"],
     socialProof: "200+ stores onboarded",
   },
@@ -152,6 +164,12 @@ export function getLandingConfig() {
     ...DEFAULT_LANDING_CONFIG,
     ...saved,
     hero: { ...DEFAULT_LANDING_CONFIG.hero, ...(saved.hero || {}) },
+    brand: { ...DEFAULT_LANDING_CONFIG.brand, ...(saved.brand || {}) },
+    navigation: {
+      ...DEFAULT_LANDING_CONFIG.navigation,
+      ...(saved.navigation || {}),
+      items: Array.isArray(saved.navigation?.items) ? saved.navigation.items : DEFAULT_LANDING_CONFIG.navigation.items,
+    },
     pricing: mergedPricing,
     plans,
   };

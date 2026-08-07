@@ -49,10 +49,6 @@ export default function LandingGuide({
     dispatch({ type: GUIDE_EVENTS.CLOSE });
     emit("chatbot_closed");
   };
-  const chooseAudience = (audienceId) => {
-    dispatch({ type: GUIDE_EVENTS.CHOOSE_AUDIENCE, audienceId });
-    emit("chatbot_option_selected", { optionId: audienceId });
-  };
   const chooseBusiness = (businessId) => {
     dispatch({ type: GUIDE_EVENTS.CHOOSE_BUSINESS, businessId });
     emit("chatbot_option_selected", { optionId: businessId });
@@ -78,7 +74,7 @@ export default function LandingGuide({
     const last = focusable[focusable.length - 1];
     if (document.activeElement === headingRef.current) {
       event.preventDefault();
-      const forwardTarget = state.step === GUIDE_STEPS.AUDIENCE ? first : backRef.current;
+      const forwardTarget = state.step === GUIDE_STEPS.BUSINESS_TYPE ? first : backRef.current;
       (event.shiftKey ? last : forwardTarget || first).focus();
     } else if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
@@ -89,11 +85,8 @@ export default function LandingGuide({
     }
   };
 
-  const audience = state.audienceId ? content.audiences[state.audienceId] : null;
-  const heading = state.step === GUIDE_STEPS.AUDIENCE
-    ? "How can we guide you?"
-    : state.step === GUIDE_STEPS.BUSINESS_TYPE
-      ? audience?.prompt
+  const heading = state.step === GUIDE_STEPS.BUSINESS_TYPE
+      ? content.prompt
       : state.step === GUIDE_STEPS.UNAVAILABLE
         ? "This path isn't available right now"
         : state.result?.title;
@@ -108,7 +101,7 @@ export default function LandingGuide({
           aria-expanded="false"
           aria-haspopup="dialog"
           aria-controls="landing-guide-panel"
-          className="fixed bottom-24 right-5 z-50 min-h-11 rounded-full bg-brand px-4 py-3 text-white shadow-glow inline-flex items-center gap-2 hover:bg-brand-hover focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base motion-reduce:transition-none lg:bottom-5"
+          className="fixed bottom-5 left-5 right-auto z-50 h-14 rounded-full bg-gradient-to-r from-brand to-fuchsia-500 pl-4 pr-5 text-white shadow-glow inline-flex items-center gap-2 border border-white/10 backdrop-blur transition-transform hover:-translate-y-0.5 active:translate-y-0 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base motion-reduce:transition-none lg:left-auto lg:right-5"
           data-testid="landing-guide-launcher"
         >
           <MessageCircle className="h-5 w-5" aria-hidden="true" />
@@ -158,7 +151,7 @@ export default function LandingGuide({
             </div>
 
             <div className="max-h-[calc(85dvh-68px)] overflow-y-auto p-5 sm:max-h-[520px]">
-              {(state.step === GUIDE_STEPS.BUSINESS_TYPE || state.step === GUIDE_STEPS.RESULT || state.step === GUIDE_STEPS.UNAVAILABLE) && (
+              {(state.step === GUIDE_STEPS.RESULT || state.step === GUIDE_STEPS.UNAVAILABLE) && (
                 <button
                   ref={backRef}
                   type="button"
@@ -181,18 +174,10 @@ export default function LandingGuide({
               </h2>
               <div className="sr-only" role="status" aria-live="polite">{heading}</div>
 
-              {state.step === GUIDE_STEPS.AUDIENCE && (
-                <div className="mt-5 grid gap-3" data-testid="landing-guide-audience-options">
-                  <p className="text-sm text-ink-secondary">Choose what brings you here.</p>
-                  {Object.values(content.audiences).map((option) => (
-                    <Choice key={option.id} option={option} onClick={() => chooseAudience(option.id)} />
-                  ))}
-                </div>
-              )}
-
               {state.step === GUIDE_STEPS.BUSINESS_TYPE && (
                 <div className="mt-5 grid gap-3" data-testid="landing-guide-business-options">
-                  {Object.values(audience?.businesses || {}).map((option) => (
+                  <p className="text-sm text-ink-secondary">Choose your business type.</p>
+                  {Object.values(content.businesses || {}).map((option) => (
                     <Choice key={option.id} option={option} onClick={() => chooseBusiness(option.id)} />
                   ))}
                 </div>
@@ -233,7 +218,7 @@ export default function LandingGuide({
                 </a>
               )}
 
-              {state.step !== GUIDE_STEPS.AUDIENCE && (
+              {state.step !== GUIDE_STEPS.BUSINESS_TYPE && (
                 <button
                   type="button"
                   onClick={reset}

@@ -7,8 +7,8 @@ test("is a safe no-op without an adapter", () => {
 test("emits an approved event with allowlisted stable identifiers", () => {
   const adapter = jest.fn();
   const port = createLandingGuideEventPort(adapter);
-  expect(port.emit("chatbot_option_selected", { optionId: "owner" })).toBe(true);
-  expect(adapter).toHaveBeenCalledWith("chatbot_option_selected", { optionId: "owner" });
+  expect(port.emit("chatbot_option_selected", { optionId: "restaurant" })).toBe(true);
+  expect(adapter).toHaveBeenCalledWith("chatbot_option_selected", { optionId: "restaurant" });
 });
 
 test("emits the WhatsApp contact selection without contact data", () => {

@@ -19,9 +19,8 @@ const mount = async (props = {}) => {
   root = createRoot(container);
   await act(async () => root.render(<MemoryRouter><LandingGuide {...props} /></MemoryRouter>));
 };
-const choose = async (audience, business) => {
+const choose = async (business) => {
   await click(byTestId("landing-guide-launcher"));
-  await click(byTestId(`landing-guide-option-${audience}`));
   await click(byTestId(`landing-guide-option-${business}`));
 };
 
@@ -42,6 +41,8 @@ test("renders a labelled closed launcher without a free-text field", async () =>
   const launcher = byTestId("landing-guide-launcher");
   expect(launcher.tagName).toBe("BUTTON");
   expect(launcher.getAttribute("aria-haspopup")).toBe("dialog");
+  expect(launcher.className).toMatch(/bottom-5.*left-5.*right-auto.*lg:left-auto.*lg:right-5/);
+  expect(launcher.className).toMatch(/h-14.*bg-gradient-to-r.*from-brand.*to-fuchsia-500/);
   expect(container.querySelector("input, textarea")).toBeNull();
 });
 
@@ -68,7 +69,7 @@ test("hides WhatsApp contact when its number is absent or invalid", async () => 
   expect(byTestId("landing-guide-whatsapp")).toBeNull();
 });
 
-test("opens an automated dialog and focuses its audience heading", async () => {
+test("opens directly at business-type selection and focuses its heading", async () => {
   await mount();
   await click(byTestId("landing-guide-launcher"));
   const panel = byTestId("landing-guide-panel");
@@ -76,50 +77,53 @@ test("opens an automated dialog and focuses its audience heading", async () => {
   expect(panel.className).toMatch(/absolute.*bottom-0.*sm:right-5/);
   expect(panel.className).not.toMatch(/\bgrain\b/);
   expect(container.textContent).toContain("Automated guidance");
+  expect(byTestId("landing-guide-heading").textContent).toContain("business do you run");
+  expect(byTestId("landing-guide-option-customer")).toBeNull();
   expect(document.activeElement).toBe(byTestId("landing-guide-heading"));
 });
 
 test("completes the owner restaurant path with a semantic route link", async () => {
   await mount();
-  await choose("owner", "restaurant");
+  await choose("restaurant");
   const action = byTestId("landing-guide-action-owner-restaurant-register");
   expect(byTestId("landing-guide-result").textContent).toContain("publish your menu");
   expect(action.tagName).toBe("A");
   expect(action.getAttribute("href")).toBe("/register");
 });
 
-test("completes the customer salon path and emits only allowlisted event data", async () => {
+test("completes the salon path and emits only allowlisted event data", async () => {
   const adapter = jest.fn();
   await mount({ eventPort: createLandingGuideEventPort(adapter) });
-  await choose("customer", "salon");
-  const action = byTestId("landing-guide-action-customer-salon-discover");
-  expect(action.getAttribute("href")).toBe("/discover");
+  await choose("salon");
+  const action = byTestId("landing-guide-action-owner-salon-register");
+  expect(action.getAttribute("href")).toBe("/register");
   await click(action);
   expect(adapter).toHaveBeenCalledWith("chatbot_action_selected", {
-    actionId: "customer-salon-discover",
+    actionId: "owner-salon-register",
   });
   expect(JSON.stringify(adapter.mock.calls)).not.toMatch(/phone|email|message|query/i);
 });
 
 test("Back and Start over restore earlier prompts and focus", async () => {
   await mount();
-  await choose("owner", "salon");
+  await choose("salon");
   await click(byTestId("landing-guide-back"));
   expect(byTestId("landing-guide-heading").textContent).toContain("business do you run");
   expect(document.activeElement).toBe(byTestId("landing-guide-heading"));
+  await click(byTestId("landing-guide-option-salon"));
   await click(byTestId("landing-guide-reset"));
-  expect(byTestId("landing-guide-heading").textContent).toContain("How can we guide you");
+  expect(byTestId("landing-guide-heading").textContent).toContain("business do you run");
 });
 
 test("Escape closes the guide, returns focus, and same-mount reopen resumes", async () => {
   await mount();
   await click(byTestId("landing-guide-launcher"));
-  await click(byTestId("landing-guide-option-customer"));
+  await click(byTestId("landing-guide-option-restaurant"));
   await key(byTestId("landing-guide-panel"), "Escape");
   expect(byTestId("landing-guide-panel")).toBeNull();
   expect(document.activeElement).toBe(byTestId("landing-guide-launcher"));
   await click(byTestId("landing-guide-launcher"));
-  expect(byTestId("landing-guide-heading").textContent).toContain("looking for today");
+  expect(byTestId("landing-guide-heading").textContent).toContain("food business");
 });
 
 test("traps Tab at panel boundaries and exposes responsive reduced-motion classes", async () => {
@@ -141,12 +145,11 @@ test("traps Tab at panel boundaries and exposes responsive reduced-motion classe
   expect(byTestId("landing-guide-panel").className).toMatch(/bottom-0.*sm:right-5/);
 });
 
-test("forward Tab from later-state headings lands on Back", async () => {
+test("forward Tab targets Close initially and Back on result", async () => {
   await mount();
   await click(byTestId("landing-guide-launcher"));
-  await click(byTestId("landing-guide-option-owner"));
   await key(byTestId("landing-guide-heading"), "Tab");
-  expect(document.activeElement).toBe(byTestId("landing-guide-back"));
+  expect(document.activeElement).toBe(byTestId("landing-guide-close"));
 
   await click(byTestId("landing-guide-option-restaurant"));
   await key(byTestId("landing-guide-heading"), "Tab");
@@ -155,7 +158,7 @@ test("forward Tab from later-state headings lands on Back", async () => {
 
 test("forward Tab from an unavailable-state heading lands on Back", async () => {
   await mount({ actions: {} });
-  await choose("owner", "salon");
+  await choose("salon");
   await key(byTestId("landing-guide-heading"), "Tab");
   expect(document.activeElement).toBe(byTestId("landing-guide-back"));
   await key(byTestId("landing-guide-panel"), "Escape");
@@ -166,7 +169,7 @@ test("fails closed for an unavailable action without persistence or network call
   const storageSpy = jest.spyOn(Storage.prototype, "setItem");
   const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({});
   await mount({ actions: {} });
-  await choose("owner", "restaurant");
+  await choose("restaurant");
   expect(byTestId("landing-guide-unavailable")).not.toBeNull();
   expect(container.querySelector('[data-testid^="landing-guide-action-"]')).toBeNull();
   expect(storageSpy).not.toHaveBeenCalled();

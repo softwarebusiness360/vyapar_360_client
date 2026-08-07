@@ -24,6 +24,9 @@ export default function AdminLandingCMSPage() {
   };
 
   const setHero = (k, v) => setCfg({ ...cfg, hero: { ...cfg.hero, [k]: v } });
+  const setBrand = (k, v) => setCfg({ ...cfg, brand: { ...cfg.brand, [k]: v } });
+  const setNavigation = (k, v) => setCfg({ ...cfg, navigation: { ...cfg.navigation, [k]: v } });
+  const setNavItem = (idx, patch) => setNavigation("items", cfg.navigation.items.map((item, i) => i === idx ? { ...item, ...patch } : item));
   const setPricing = (k, v) => setCfg({ ...cfg, pricing: { ...cfg.pricing, [k]: v } });
   const setFooterNote = (idx, k, v) => {
     const footerNotes = (cfg.pricing.footerNotes || []).map((n, i) =>
@@ -96,6 +99,22 @@ export default function AdminLandingCMSPage() {
         </div>
       </div>
 
+      <Section title="Brand & navigation">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Row label="Brand name"><input className="input-field" value={cfg.brand.name} onChange={(e) => setBrand("name", e.target.value)} data-testid="cms-brand-name" /></Row>
+          <Row label="Logo image URL"><input className="input-field" value={cfg.brand.logoUrl} onChange={(e) => setBrand("logoUrl", e.target.value)} placeholder="Optional https://…" data-testid="cms-brand-logo" /></Row>
+          {cfg.navigation.items.map((item, i) => <div key={item.id} className="sm:col-span-2 grid grid-cols-[auto_1fr_1fr] items-center gap-2">
+            <input type="checkbox" checked={item.visible !== false} onChange={(e) => setNavItem(i, { visible: e.target.checked })} aria-label={`Show ${item.label}`} />
+            <input className="input-field" value={item.label} onChange={(e) => setNavItem(i, { label: e.target.value })} />
+            <input className="input-field" value={item.href} onChange={(e) => setNavItem(i, { href: e.target.value })} />
+          </div>)}
+          <Row label="Login label"><input className="input-field" value={cfg.navigation.loginLabel} onChange={(e) => setNavigation("loginLabel", e.target.value)} /></Row>
+          <Row label="Login destination"><select className="input-field" value={cfg.navigation.loginTo} onChange={(e) => setNavigation("loginTo", e.target.value)}><option value="/login">/login</option></select></Row>
+          <Row label="Primary CTA label"><input className="input-field" value={cfg.navigation.ctaLabel} onChange={(e) => setNavigation("ctaLabel", e.target.value)} /></Row>
+          <Row label="Primary CTA destination"><select className="input-field" value={cfg.navigation.ctaTo} onChange={(e) => setNavigation("ctaTo", e.target.value)}><option value="/register">/register</option></select></Row>
+        </div>
+      </Section>
+
       {/* Hero */}
       <Section title="Hero">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -110,6 +129,8 @@ export default function AdminLandingCMSPage() {
           </Row>
           <Row label="Primary CTA text"><input className="input-field" value={cfg.hero.ctaPrimary} onChange={(e) => setHero("ctaPrimary", e.target.value)} data-testid="cms-hero-cta1" /></Row>
           <Row label="Secondary CTA text"><input className="input-field" value={cfg.hero.ctaSecondary} onChange={(e) => setHero("ctaSecondary", e.target.value)} data-testid="cms-hero-cta2" /></Row>
+          <Row label="Primary CTA destination"><select className="input-field" value={cfg.hero.ctaPrimaryTo} onChange={(e) => setHero("ctaPrimaryTo", e.target.value)}><option value="/register">/register</option></select></Row>
+          <Row label="Secondary CTA destination"><select className="input-field" value={cfg.hero.ctaSecondaryTo} onChange={(e) => setHero("ctaSecondaryTo", e.target.value)}><option value="#pricing">#pricing</option><option value="#features">#features</option><option value="#business-types">#business-types</option></select></Row>
         </div>
       </Section>
 

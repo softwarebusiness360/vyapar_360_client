@@ -181,7 +181,7 @@ export default function LandingPage() {
   const currency = pricing?.currencySymbol || "₹";
   return (
     <div className="min-h-screen flex flex-col">
-      <PublicHeader />
+      <PublicHeader brand={cfg.brand} navigation={cfg.navigation} />
 
       {/* HERO */}
       <section className="relative overflow-hidden grain">
@@ -233,7 +233,7 @@ export default function LandingPage() {
                 className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
               >
                 <Link
-                  to="/register"
+                  to={hero.ctaPrimaryTo || "/register"}
                   className="btn-primary inline-flex items-center justify-center gap-2 text-base !py-3.5 !px-6"
                   data-testid="hero-cta-register"
                 >
@@ -241,7 +241,7 @@ export default function LandingPage() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <a
-                  href="#pricing"
+                  href={hero.ctaSecondaryTo || "#pricing"}
                   className="btn-ghost inline-flex items-center justify-center gap-2 text-base !py-3.5 !px-6"
                   data-testid="hero-cta-pricing"
                 >
