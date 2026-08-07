@@ -1,4 +1,6 @@
-const DEFAULT_MESSAGE = "Hi Vyapar360, I need help choosing the right journey.";
+import { APP_CONFIG } from "@/config/appConfig";
+
+const DEFAULT_MESSAGE = `Hi ${APP_CONFIG.brandName}, I need help choosing the right journey.`;
 
 export function normalizeWhatsAppNumber(value) {
   const submitted = String(value || "").trim();

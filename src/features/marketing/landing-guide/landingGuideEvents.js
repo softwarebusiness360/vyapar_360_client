@@ -12,7 +12,6 @@ const ALLOWED_PAYLOAD_KEYS = new Set(["optionId", "actionId"]);
 const OPTION_IDS = new Set(["restaurant", "salon"]);
 const ACTION_IDS = new Set([
   "owner-restaurant-register",
-  "owner-salon-register",
 ]);
 
 function isAllowedValue(key, value) {

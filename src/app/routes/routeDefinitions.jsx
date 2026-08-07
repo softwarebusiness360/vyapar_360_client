@@ -1,5 +1,6 @@
 import React from "react";
 import LandingPage from "@/features/marketing/LandingPage";
+import LegalPage from "@/features/marketing/LegalPage";
 import LoginPage from "@/features/vendor/auth/LoginPage";
 import RegisterPage from "@/features/vendor/auth/RegisterPage";
 import OnboardingPage from "@/features/vendor/auth/OnboardingPage";
@@ -38,6 +39,8 @@ import { RedirectIfAdmin, RedirectIfAuthed, RequireAdmin, RequireAuth } from "./
 
 export const routeDefinitions = [
   { id: "marketing-home", path: "/", guard: "public", element: <LandingPage /> },
+  { id: "marketing-privacy", path: "/privacy", guard: "public", element: <LegalPage page="privacy" /> },
+  { id: "marketing-terms", path: "/terms", guard: "public", element: <LegalPage page="terms" /> },
   { id: "customer-discover", path: "/discover", guard: "public", element: <DiscoverPage /> },
   { id: "vendor-login", path: "/login", guard: "redirect-if-vendor", element: <RedirectIfAuthed><LoginPage /></RedirectIfAuthed> },
   { id: "vendor-register", path: "/register", guard: "redirect-if-vendor", element: <RedirectIfAuthed><RegisterPage /></RedirectIfAuthed> },

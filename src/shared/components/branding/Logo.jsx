@@ -1,8 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Store } from "lucide-react";
+import { APP_CONFIG } from "@/config/appConfig";
 
-export default function Logo({ size = "md", to = "/", className = "", name = "Vyapar360", logoUrl = "" }) {
+export default function Logo({ size = "md", to = "/", className = "", name = APP_CONFIG.brandName, logoUrl = "" }) {
   const dims = size === "sm" ? "h-7 w-7" : "h-9 w-9";
   const text = size === "sm" ? "text-lg" : "text-xl";
   return (

@@ -11,13 +11,16 @@ test("opens directly at business-type selection", () => {
 
 test.each([
   ["restaurant", "owner-restaurant-register"],
-  ["salon", "owner-salon-register"],
 ])("resolves %s to %s", (businessId, actionId) => {
   expect(result(businessId)).toMatchObject({
     step: GUIDE_STEPS.RESULT,
     businessId,
     action: { id: actionId, to: "/register" },
   });
+});
+
+test("resolves salon to a recoverable coming-soon state", () => {
+  expect(result("salon")).toMatchObject({ step: GUIDE_STEPS.UNAVAILABLE, businessId: "salon", action: null });
 });
 
 test("backs from a result to clean business choices", () => {
@@ -35,10 +38,10 @@ test("start over clears the selected business", () => {
 });
 
 test("close and reopen resume the same in-memory result", () => {
-  const beforeClose = result("salon");
+  const beforeClose = result("restaurant");
   const closed = send(beforeClose, GUIDE_EVENTS.CLOSE);
   expect(closed.step).toBe(GUIDE_STEPS.CLOSED);
-  expect(closed.resume).toMatchObject({ step: GUIDE_STEPS.RESULT, businessId: "salon" });
+  expect(closed.resume).toMatchObject({ step: GUIDE_STEPS.RESULT, businessId: "restaurant" });
   expect(send(closed, GUIDE_EVENTS.OPEN)).toMatchObject(beforeClose);
 });
 

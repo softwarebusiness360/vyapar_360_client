@@ -20,6 +20,7 @@ export default function LandingGuide({
     [content, actions],
   );
   const [state, dispatch] = useReducer(reducer, initialLandingGuideState);
+  const [showDesktopLauncher, setShowDesktopLauncher] = React.useState(false);
   const launcherRef = useRef(null);
   const panelRef = useRef(null);
   const headingRef = useRef(null);
@@ -27,6 +28,13 @@ export default function LandingGuide({
   const wasOpenRef = useRef(false);
   const open = state.step !== GUIDE_STEPS.CLOSED;
   const whatsappHref = createWhatsAppContactHref(whatsappNumber);
+
+  useEffect(() => {
+    const update = () => setShowDesktopLauncher(window.scrollY >= window.innerHeight * 0.25);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -45,6 +53,11 @@ export default function LandingGuide({
     dispatch({ type: GUIDE_EVENTS.OPEN });
     emit("chatbot_opened");
   };
+  useEffect(() => {
+    const openFromSupport = () => openGuide();
+    window.addEventListener("vyapar360:open-support", openFromSupport);
+    return () => window.removeEventListener("vyapar360:open-support", openFromSupport);
+  });
   const closeGuide = () => {
     dispatch({ type: GUIDE_EVENTS.CLOSE });
     emit("chatbot_closed");
@@ -88,7 +101,7 @@ export default function LandingGuide({
   const heading = state.step === GUIDE_STEPS.BUSINESS_TYPE
       ? content.prompt
       : state.step === GUIDE_STEPS.UNAVAILABLE
-        ? "This path isn't available right now"
+        ? state.result?.title || "This path isn't available right now"
         : state.result?.title;
 
   return (
@@ -101,7 +114,7 @@ export default function LandingGuide({
           aria-expanded="false"
           aria-haspopup="dialog"
           aria-controls="landing-guide-panel"
-          className="fixed bottom-5 left-5 right-auto z-50 h-14 rounded-full bg-gradient-to-r from-brand to-fuchsia-500 pl-4 pr-5 text-white shadow-glow inline-flex items-center gap-2 border border-white/10 backdrop-blur transition-transform hover:-translate-y-0.5 active:translate-y-0 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base motion-reduce:transition-none lg:left-auto lg:right-5"
+          className={`fixed bottom-5 left-5 right-auto z-50 h-14 rounded-full bg-gradient-to-r from-brand to-fuchsia-500 pl-4 pr-5 text-white shadow-glow inline-flex items-center gap-2 border border-white/10 backdrop-blur transition-[transform,opacity] hover:-translate-y-0.5 active:translate-y-0 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base motion-reduce:transition-none lg:left-auto lg:right-5 ${showDesktopLauncher ? "lg:opacity-100 lg:pointer-events-auto" : "lg:opacity-0 lg:pointer-events-none"}`}
           data-testid="landing-guide-launcher"
         >
           <MessageCircle className="h-5 w-5" aria-hidden="true" />
@@ -198,9 +211,10 @@ export default function LandingGuide({
               )}
 
               {state.step === GUIDE_STEPS.UNAVAILABLE && (
-                <p className="mt-4 text-sm text-ink-secondary" data-testid="landing-guide-unavailable">
-                  Choose another option or close the guide and continue exploring the landing page.
-                </p>
+                <div className="mt-4 text-sm text-ink-secondary" data-testid="landing-guide-unavailable">
+                  <p>{state.result?.guidance}</p>
+                  <p className="mt-2">Choose another option or close the guide.</p>
+                </div>
               )}
 
               {whatsappHref && (

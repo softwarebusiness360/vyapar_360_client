@@ -91,17 +91,12 @@ test("completes the owner restaurant path with a semantic route link", async () 
   expect(action.getAttribute("href")).toBe("/register");
 });
 
-test("completes the salon path and emits only allowlisted event data", async () => {
-  const adapter = jest.fn();
-  await mount({ eventPort: createLandingGuideEventPort(adapter) });
+test("shows a recoverable coming-soon result for salons", async () => {
+  await mount();
   await choose("salon");
-  const action = byTestId("landing-guide-action-owner-salon-register");
-  expect(action.getAttribute("href")).toBe("/register");
-  await click(action);
-  expect(adapter).toHaveBeenCalledWith("chatbot_action_selected", {
-    actionId: "owner-salon-register",
-  });
-  expect(JSON.stringify(adapter.mock.calls)).not.toMatch(/phone|email|message|query/i);
+  expect(byTestId("landing-guide-heading").textContent).toContain("Salons are coming soon");
+  expect(byTestId("landing-guide-unavailable").textContent).toContain("on our roadmap");
+  expect(container.querySelector('[data-testid^="landing-guide-action-"]')).toBeNull();
 });
 
 test("Back and Start over restore earlier prompts and focus", async () => {

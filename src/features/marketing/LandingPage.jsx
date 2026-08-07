@@ -8,9 +8,9 @@ import {
   BarChart3,
   Palette,
   Smartphone,
-  ShieldCheck,
   Sparkles,
   Utensils,
+  Coffee,
   Scissors,
   Dumbbell,
   Pill,
@@ -34,6 +34,7 @@ import {
   PartyPopper,
   GraduationCap,
   Building2,
+  QrCode,
 } from "lucide-react";
 import PublicHeader from "@/shared/components/navigation/PublicHeader";
 import PublicFooter from "@/shared/components/layout/PublicFooter";
@@ -48,69 +49,24 @@ const FOOTER_NOTE_ICONS = {
   "message-circle": MessageCircle,
   globe: Globe,
 };
+const HERO_FLOW_ICONS = [Upload, QrCode, ShoppingBag];
 
-const featureList = [
-  {
-    icon: ShoppingBag,
-    title: "Beautiful storefront",
-    body: "A polished, mobile-first store at /store/your-brand — ready in minutes.",
-  },
-  {
-    icon: CalendarCheck,
-    title: "Orders & bookings",
-    body: "Take food orders or appointment bookings from one clean dashboard.",
-  },
-  {
-    icon: BarChart3,
-    title: "Real insights",
-    body: "Track revenue, top items, and customer trends without a spreadsheet.",
-  },
-  {
-    icon: Palette,
-    title: "Your branding",
-    body: "Custom logo, cover imagery, tagline, and colour accents per business.",
-  },
-  {
-    icon: Smartphone,
-    title: "Mobile-first design",
-    body: "Pixel-perfect on every screen — from a 5-inch phone to a 27-inch monitor.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Ready to scale",
-    body: "Architected so LocalStorage swaps to real APIs, payments & WhatsApp later.",
-  },
-];
+const FEATURE_ICONS = { storefront: Palette, menu: Utensils, direct: ShoppingBag, orders: CalendarCheck, customers: Smartphone, sales: BarChart3 };
 
-const businessTypes = [
-  { icon: Utensils, name: "Restaurants", available: true },
-  { icon: Scissors, name: "Salons", available: true },
-  { icon: Dumbbell, name: "Gyms", available: false },
-  { icon: Pill, name: "Pharmacies", available: false },
-  { icon: ShoppingCart, name: "Grocery", available: false },
-  { icon: Cookie, name: "Bakeries", available: false },
-  { icon: Shirt, name: "Boutiques", available: false },
-  { icon: Flower2, name: "Spas", available: false },
-  { icon: Stethoscope, name: "Clinics", available: false },
-  // Education & Training Management
-  // Supports music academies, dance schools, tuition centers, coaching institutes,
-  // sports academies, coding bootcamps, yoga classes, language institutes, art schools, etc.
-  // Vendors: Academy Owner, Principal, Teachers, Staff
-  // Customers: Students & Parents
-  // Core features: Courses, Batches, Timetable, Attendance, Enrollments,
-  // Fee Management, Progress Reports, Homework, Notifications.
-  { icon: GraduationCap, name: "Academies & Classes", available: false },
-
-  // Rental & Property Management
-  // Supports apartment buildings, PGs, hostels, commercial properties,
-  // offices, societies, and rental businesses.
-  // Vendors: Property Owner, Manager, Employees
-  // Customers: Tenants
-  // Core features: Property & Unit Management, Tenant Onboarding,
-  // Rent Collection, Maintenance Requests, Visitor Management,
-  // Notices, Documents, Meter Readings, Expense Tracking.
-  { icon: Building2, name: "Rental & Property", available: false },
-];
+const BUSINESS_TYPE_ICONS = {
+  restaurant: Utensils,
+  cafe: Coffee,
+  salon: Scissors,
+  gym: Dumbbell,
+  pharmacy: Pill,
+  grocery: ShoppingCart,
+  bakery: Cookie,
+  boutique: Shirt,
+  spa: Flower2,
+  clinic: Stethoscope,
+  academy: GraduationCap,
+  property: Building2,
+};
 
 const testimonials = [
   {
@@ -133,32 +89,7 @@ const testimonials = [
   },
 ];
 
-const howItWorks = [
-  {
-    icon: MousePointerClick,
-    title: "Sign up in 30 seconds",
-    body: "One email, one password — no credit card, no waiting list.",
-    step: "01",
-  },
-  {
-    icon: Upload,
-    title: "Add your menu or services",
-    body: "Upload items with photos, prices, and categories in a few clicks.",
-    step: "02",
-  },
-  {
-    icon: Send,
-    title: "Share your storefront link",
-    body: "Send /store/your-brand on WhatsApp, Instagram, or print on flyers.",
-    step: "03",
-  },
-  {
-    icon: PartyPopper,
-    title: "Take orders & bookings",
-    body: "Watch the dashboard light up. Manage everything from your phone.",
-    step: "04",
-  },
-];
+const HOW_ICONS = { create: MousePointerClick, menu: Upload, share: Send, orders: PartyPopper };
 
 export default function LandingPage() {
   const { getLandingConfig, seedIfNeeded } = repository;
@@ -176,7 +107,7 @@ export default function LandingPage() {
   }, []);
 
   if (!cfg) return null;
-  const { hero, stats, plans, faqs, pricing } = cfg;
+  const { hero, stats, plans, faqs, faqSection, pricing, howItWorks, features, businessTypes, finalCta, footer } = cfg;
   const [billing, setBilling] = useState(pricing?.defaultBilling === "annual" ? "annual" : "monthly");
   const currency = pricing?.currencySymbol || "₹";
   return (
@@ -190,8 +121,8 @@ export default function LandingPage() {
           <div className="absolute top-40 -left-32 h-[520px] w-[520px] rounded-full bg-restaurant/12 blur-[160px]" />
           <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-fuchsia-500/10 blur-[120px]" />
         </div>
-        <Container className="pt-16 pb-24 sm:pt-24 sm:pb-32">
-          <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+        <Container className="pt-10 pb-16 sm:pt-14 sm:pb-20">
+          <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-start">
             <div className="lg:col-span-7">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -211,18 +142,15 @@ export default function LandingPage() {
               >
                 {hero.headlineLine1}
                 <br />
-                {hero.headlineLine2}
                 <span className="bg-gradient-to-r from-brand via-fuchsia-400 to-restaurant bg-clip-text text-transparent">
-                  {hero.headlineHighlight}
+                  {hero.headlineHighlight}{hero.headlineLine3}
                 </span>
-                <br />
-                {hero.headlineLine3}
               </motion.h1>
               <motion.p
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
-                className="mt-6 text-lg sm:text-xl text-ink-secondary max-w-xl leading-relaxed"
+                className="mt-4 text-lg sm:text-xl text-ink-secondary max-w-2xl leading-relaxed"
               >
                 {hero.subtitle}
               </motion.p>
@@ -230,7 +158,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.15 }}
-                className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
+                className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
               >
                 <Link
                   to={hero.ctaPrimaryTo || "/register"}
@@ -248,7 +176,7 @@ export default function LandingPage() {
                   {hero.ctaSecondary}
                 </a>
               </motion.div>
-              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs text-ink-muted">
+              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-secondary">
                 {(hero.perks || []).map((p) => (
                   <span key={p} className="inline-flex items-center gap-1.5">
                     <Check className="h-3.5 w-3.5 text-success" /> {p}
@@ -257,24 +185,21 @@ export default function LandingPage() {
               </div>
 
               {/* Social proof strip */}
-              <div className="mt-10 pt-6 border-t border-line">
-                <div className="text-[11px] uppercase tracking-widest text-ink-muted mb-3">
-                  Trusted by local businesses across India
-                </div>
-                <div className="flex items-center gap-6 text-ink-muted text-sm">
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
-                      />
-                    ))}
+              <div className="mt-6 pt-4 border-t border-line text-sm text-ink-secondary">
+                Built for independent restaurants &amp; cafés in India
+                <div className="mt-4" data-testid="hero-product-flow">
+                  <div className="text-[10px] uppercase tracking-widest text-ink-muted">How it works</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
+                    {(hero.flowSteps || []).map((step, index) => {
+                      const Icon = HERO_FLOW_ICONS[index] || ShoppingBag;
+                      return <React.Fragment key={step}>
+                        <span className="inline-flex items-center gap-1.5 text-xs text-ink-secondary">
+                          <Icon className="h-3.5 w-3.5 text-brand" aria-hidden="true" /> {step}
+                        </span>
+                        {index < hero.flowSteps.length - 1 && <ArrowRight className="h-3 w-3 text-ink-muted" aria-hidden="true" />}
+                      </React.Fragment>;
+                    })}
                   </div>
-                  <span className="hidden sm:inline">
-                    4.9 · Early access rating
-                  </span>
-                  <span className="text-ink-muted/60">·</span>
-                  <span>{hero.socialProof}</span>
                 </div>
               </div>
             </div>
@@ -288,7 +213,7 @@ export default function LandingPage() {
             >
               <div className="relative">
                 <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-brand/30 via-fuchsia-500/10 to-restaurant/20 blur-2xl" />
-                <div className="relative card-surface p-4 rounded-2xl">
+                <div className="relative card-surface p-3 rounded-2xl">
                   <div className="flex items-center gap-2 pb-3 border-b border-line">
                     <span className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
                     <span className="h-2.5 w-2.5 rounded-full bg-amber-500/70" />
@@ -297,19 +222,12 @@ export default function LandingPage() {
                       vyapar360.app/dashboard
                     </span>
                   </div>
-                  <div className="pt-4 grid grid-cols-3 gap-3">
+                  <div className="pt-3 grid grid-cols-2 gap-3">
                     {[
-                      {
-                        label: "Revenue",
-                        value: "₹48,290",
-                        accent: "text-brand",
-                      },
-                      {
-                        label: "Orders",
-                        value: "127",
-                        accent: "text-restaurant",
-                      },
-                      { label: "Bookings", value: "42", accent: "text-salon" },
+                      { label: "Today’s Sales", value: "₹12,480", accent: "text-brand" },
+                      { label: "Orders", value: "38", accent: "text-restaurant" },
+                      { label: "Pending", value: "4", accent: "text-amber-300" },
+                      { label: "Completed", value: "34", accent: "text-emerald-300" },
                     ].map((s) => (
                       <div
                         key={s.label}
@@ -326,11 +244,11 @@ export default function LandingPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 rounded-xl bg-bg-elevated border border-line p-4">
+                  <div className="mt-3 rounded-xl bg-bg-elevated border border-line p-3">
                     <div className="text-xs text-ink-muted mb-3">
                       Weekly revenue
                     </div>
-                    <div className="flex items-end gap-1.5 h-24">
+                    <div className="flex items-end gap-1.5 h-16">
                       {[35, 55, 40, 70, 60, 90, 75].map((h, i) => (
                         <div
                           key={i}
@@ -340,18 +258,18 @@ export default function LandingPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-3 space-y-2">
                     {[
                       {
                         code: "PH-1042",
-                        name: "Margherita ×2",
+                        name: "Margherita Pizza ×2",
                         status: "Preparing",
                         tone: "bg-blue-500/10 text-blue-300",
                       },
                       {
-                        code: "SS-208",
-                        name: "Signature Haircut",
-                        status: "Confirmed",
+                        code: "PH-1043",
+                        name: "Cold Coffee ×3",
+                        status: "Ready",
                         tone: "bg-emerald-500/10 text-emerald-300",
                       },
                     ].map((o) => (
@@ -411,21 +329,22 @@ export default function LandingPage() {
         <Container>
           <div className="max-w-2xl">
             <span className="text-sm uppercase tracking-widest text-brand">
-              How it works
+              {howItWorks.eyebrow}
             </span>
             <h2
               className="mt-3 text-3xl sm:text-4xl font-display font-medium tracking-tight"
               data-testid="how-title"
             >
-              From zero to selling in four steps.
+              {howItWorks.title}
             </h2>
             <p className="mt-4 text-ink-secondary">
-              You don't need a website, a designer, or a developer. Just a phone
-              and a coffee.
+              {howItWorks.subtitle}
             </p>
           </div>
-          <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {howItWorks.map((s, i) => (
+          <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {howItWorks.steps.map((s, i) => {
+              const StepIcon = HOW_ICONS[s.icon] || MousePointerClick;
+              return (
               <motion.div
                 key={s.title}
                 initial={{ opacity: 0, y: 12 }}
@@ -435,11 +354,11 @@ export default function LandingPage() {
                 className="relative card-surface p-6 card-hover"
                 data-testid={`how-step-${i}`}
               >
-                <div className="absolute top-4 right-5 font-display text-4xl font-semibold text-white/5 tracking-tighter select-none">
-                  {s.step}
+                <div className="absolute top-4 right-5 font-display text-4xl font-semibold text-white/15 tracking-tighter select-none">
+                  {String(i + 1).padStart(2, "0")}
                 </div>
                 <div className="h-10 w-10 rounded-lg bg-brand-soft border border-brand/30 grid place-items-center">
-                  <s.icon className="h-5 w-5 text-brand" />
+                  <StepIcon className="h-5 w-5 text-brand" />
                 </div>
                 <h3 className="mt-4 font-display text-lg font-medium">
                   {s.title}
@@ -448,7 +367,8 @@ export default function LandingPage() {
                   {s.body}
                 </p>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </Container>
       </Section>
@@ -458,21 +378,22 @@ export default function LandingPage() {
         <Container>
           <div className="max-w-2xl">
             <span className="text-sm uppercase tracking-widest text-brand">
-              Everything included
+              {features.eyebrow}
             </span>
             <h2
               className="mt-3 text-3xl sm:text-4xl font-display font-medium tracking-tight"
               data-testid="features-title"
             >
-              A polished storefront and the tools to run it.
+              {features.title}
             </h2>
             <p className="mt-4 text-ink-secondary">
-              No plugins, no themes, no code. Every business gets a premium
-              storefront and a dashboard designed for real operators.
+              {features.subtitle}
             </p>
           </div>
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featureList.map((f, i) => (
+          <div className="mt-12 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {features.cards.slice(0, 6).map((f, i) => {
+              const FeatureIcon = FEATURE_ICONS[f.icon] || ShoppingBag;
+              return (
               <motion.div
                 key={f.title}
                 initial={{ opacity: 0, y: 12 }}
@@ -483,7 +404,7 @@ export default function LandingPage() {
                 data-testid={`feature-card-${i}`}
               >
                 <div className="h-10 w-10 rounded-lg bg-brand-soft border border-brand/30 grid place-items-center">
-                  <f.icon className="h-5 w-5 text-brand" />
+                  <FeatureIcon className="h-5 w-5 text-brand" />
                 </div>
                 <h3 className="mt-4 font-display text-lg font-medium">
                   {f.title}
@@ -492,7 +413,8 @@ export default function LandingPage() {
                   {f.body}
                 </p>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </Container>
       </Section>
@@ -697,7 +619,7 @@ export default function LandingPage() {
                   </Link>
 
                   <ul className="mt-8 space-y-3 pt-6 border-t border-line">
-                    {plan.features.map((f, idx) => (
+                    {plan.features.filter((feature) => feature.visible !== false).map((f, idx) => (
                       <li
                         key={idx}
                         className={`flex items-start gap-2.5 text-sm ${f.included ? "text-ink-primary" : "text-ink-muted line-through decoration-ink-muted/40"}`}
@@ -743,41 +665,38 @@ export default function LandingPage() {
       {/* BUSINESS TYPES */}
       <Section id="business-types" className="border-t border-line">
         <Container>
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-            <div className="max-w-2xl">
-              <span className="text-sm uppercase tracking-widest text-brand">
-                Built to expand
-              </span>
-              <h2 className="mt-3 text-3xl sm:text-4xl font-display font-medium tracking-tight">
-                Two live today. Nine on the roadmap.
-              </h2>
-            </div>
-            <p className="text-sm text-ink-secondary max-w-md">
-              Start with Restaurants and Salons. New business types roll out
-              every month — your dashboard adapts automatically.
+          <div className="max-w-3xl">
+            <span className="text-sm uppercase tracking-widest text-brand">
+              {businessTypes.eyebrow}
+            </span>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-display font-medium tracking-tight" data-testid="business-types-title">
+              {businessTypes.title}
+            </h2>
+            <p className="mt-4 text-ink-secondary">
+              {businessTypes.subtitle}
             </p>
           </div>
-          <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {businessTypes.map((b) => (
-              <div
-                key={b.name}
-                className="relative card-surface p-5 flex flex-col items-start gap-3 card-hover"
-                data-testid={`business-type-${b.name.toLowerCase()}`}
-              >
-                <b.icon
-                  className={`h-6 w-6 ${b.available ? "text-brand" : "text-ink-muted"}`}
-                />
-                <div>
-                  <div className="font-medium text-ink-primary">{b.name}</div>
-                  <div className="mt-1 text-[11px] uppercase tracking-widest text-ink-muted">
-                    {b.available ? "Available" : "Coming soon"}
-                  </div>
-                </div>
-                {b.available && (
+          <div className="mt-10" data-testid="business-types-available">
+            <div className="text-xs uppercase tracking-widest text-ink-muted">{businessTypes.availableLabel}</div>
+            <div className="mt-3 grid grid-cols-2 gap-3 max-w-2xl">
+              {businessTypes.available.filter((item) => item.visible !== false).map((item) => {
+                const BusinessIcon = BUSINESS_TYPE_ICONS[item.icon] || Utensils;
+                return <div key={item.id} className="relative card-surface border-brand/40 bg-brand-soft p-5 flex items-center gap-4" data-testid={`business-type-${item.id}`}>
+                  <div className="h-11 w-11 rounded-xl border border-brand/40 bg-brand-soft grid place-items-center"><BusinessIcon className="h-6 w-6 text-brand" /></div>
+                  <div><div className="font-medium text-ink-primary">{item.name}</div><div className="mt-1 text-[11px] uppercase tracking-widest text-success">{businessTypes.availableLabel}</div></div>
                   <span className="absolute top-3 right-3 h-2 w-2 rounded-full bg-success shadow-[0_0_12px_rgba(16,185,129,0.7)]" />
-                )}
-              </div>
-            ))}
+                </div>;
+              })}
+            </div>
+          </div>
+          <div className="mt-8" data-testid="business-types-coming">
+            <div className="text-xs uppercase tracking-widest text-ink-muted">{businessTypes.comingLabel}</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {businessTypes.coming.filter((item) => item.visible !== false).map((item) => {
+                const BusinessIcon = BUSINESS_TYPE_ICONS[item.icon] || Building2;
+                return <span key={item.id} className="inline-flex items-center gap-2 rounded-full border border-line bg-bg-elevated/60 px-3 py-2 text-sm text-ink-muted" data-testid={`business-type-${item.id}`}><BusinessIcon className="h-4 w-4" />{item.name}</span>;
+              })}
+            </div>
           </div>
         </Container>
       </Section>
@@ -823,14 +742,13 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-3 gap-10">
             <div>
               <span className="text-sm uppercase tracking-widest text-brand">
-                FAQ
+                {faqSection.eyebrow}
               </span>
-              <h2 className="mt-3 text-3xl sm:text-4xl font-display font-medium tracking-tight">
-                Quick answers.
+              <h2 className="mt-3 text-3xl sm:text-4xl font-display font-medium tracking-tight" data-testid="faq-title">
+                {faqSection.title}
               </h2>
               <p className="mt-4 text-ink-secondary">
-                Have a specific question? Reach out on WhatsApp — we typically
-                reply in under an hour during business days.
+                {faqSection.subtitle}
               </p>
             </div>
             <div className="lg:col-span-2 space-y-3">
@@ -866,27 +784,26 @@ export default function LandingPage() {
             <div className="pointer-events-none absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-restaurant/10 blur-3xl" />
             <div className="relative max-w-2xl">
               <Rocket className="h-8 w-8 text-brand" />
-              <h2 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-display font-medium tracking-tighter">
-                Your storefront is 10 minutes away.
+              <h2 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-display font-medium tracking-tighter" data-testid="final-cta-title">
+                {finalCta.title}
               </h2>
               <p className="mt-4 text-ink-secondary text-lg">
-                Register, complete a quick onboarding, upload a few items — and
-                share your store link with customers today.
+                {finalCta.subtitle}
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3">
                 <Link
-                  to="/register"
+                  to={finalCta.primaryTo}
                   className="btn-primary inline-flex items-center justify-center gap-2 !py-3.5 !px-6"
                   data-testid="cta-register"
                 >
-                  Create free account <ArrowRight className="h-4 w-4" />
+                  {finalCta.primaryLabel} <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
-                  to="/discover"
+                  to={finalCta.secondaryTo}
                   className="btn-ghost inline-flex items-center justify-center gap-2 !py-3.5 !px-6"
-                  data-testid="cta-discover"
+                  data-testid="cta-demo"
                 >
-                  See demo stores
+                  {finalCta.secondaryLabel}
                 </Link>
               </div>
             </div>
@@ -894,7 +811,7 @@ export default function LandingPage() {
         </Container>
       </Section>
 
-      <PublicFooter />
+      <PublicFooter footer={footer} />
       <LandingGuide />
     </div>
   );

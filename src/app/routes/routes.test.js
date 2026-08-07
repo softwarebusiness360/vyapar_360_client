@@ -3,9 +3,9 @@ import { matchRoutes } from "react-router-dom";
 import { appRoutes, vendorRoutes, customerRoutes, adminRoutes, routeDefinitions } from ".";
 import { evaluateRoute } from "./routePolicy";
 
-test("preserves all 35 route declarations", () => {
-  expect(appRoutes).toHaveLength(35);
-  expect(new Set(appRoutes.map(({ id }) => id)).size).toBe(35);
+test("preserves all 37 route declarations", () => {
+  expect(appRoutes).toHaveLength(37);
+  expect(new Set(appRoutes.map(({ id }) => id)).size).toBe(37);
 });
 
 test("assigns routes to the three product experiences", () => {

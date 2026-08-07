@@ -12,9 +12,9 @@ export const LANDING_GUIDE_CONTENT = Object.freeze({
     salon: Object.freeze({
       id: "salon",
       label: "Salon",
-      title: "Grow your salon business",
-      guidance: "Publish your services and make bookings easier to manage from one dashboard.",
-      actionId: "owner-salon-register",
+      title: "Salons are coming soon",
+      guidance: "Restaurant ordering is live today. Salon storefronts and bookings are on our roadmap.",
+      actionId: null,
     }),
   }),
 });
