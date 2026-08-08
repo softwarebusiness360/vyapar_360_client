@@ -233,6 +233,59 @@ export const DEFAULT_LANDING_CONFIG = {
   ],
 };
 
+export const APPROVED_LANDING_DESTINATIONS = Object.freeze({
+  navigation: Object.freeze({ features: "/#features", pricing: "/#pricing", "business-types": "/#business-types" }),
+  login: Object.freeze(["/login"]),
+  register: Object.freeze(["/register"]),
+  heroSecondary: Object.freeze(["#how-it-works", "#pricing", "#features", "#business-types"]),
+  demo: Object.freeze(["/discover"]),
+  footer: Object.freeze({
+    features: "/#features", pricing: "/#pricing", "business-types": "/#business-types",
+    "business-login": "/login", privacy: "/privacy", terms: "/terms",
+  }),
+});
+
+function allowlisted(value, fallback, allowed) {
+  return allowed.includes(value) ? value : fallback;
+}
+
+export function sanitizeLandingDestinations(cfg) {
+  const source = cfg || DEFAULT_LANDING_CONFIG;
+  const navigation = { ...DEFAULT_LANDING_CONFIG.navigation, ...(source.navigation || {}) };
+  const hero = { ...DEFAULT_LANDING_CONFIG.hero, ...(source.hero || {}) };
+  const finalCta = { ...DEFAULT_LANDING_CONFIG.finalCta, ...(source.finalCta || {}) };
+  const footer = { ...DEFAULT_LANDING_CONFIG.footer, ...(source.footer || {}) };
+  return {
+    ...source,
+    navigation: {
+      ...navigation,
+      loginTo: allowlisted(navigation.loginTo, DEFAULT_LANDING_CONFIG.navigation.loginTo, APPROVED_LANDING_DESTINATIONS.login),
+      ctaTo: allowlisted(navigation.ctaTo, DEFAULT_LANDING_CONFIG.navigation.ctaTo, APPROVED_LANDING_DESTINATIONS.register),
+      items: (navigation.items || []).map((item) => ({
+        ...item,
+        href: APPROVED_LANDING_DESTINATIONS.navigation[item.id] || DEFAULT_LANDING_CONFIG.navigation.items.find((candidate) => candidate.id === item.id)?.href || "/",
+      })),
+    },
+    hero: {
+      ...hero,
+      ctaPrimaryTo: allowlisted(hero.ctaPrimaryTo, DEFAULT_LANDING_CONFIG.hero.ctaPrimaryTo, APPROVED_LANDING_DESTINATIONS.register),
+      ctaSecondaryTo: allowlisted(hero.ctaSecondaryTo, DEFAULT_LANDING_CONFIG.hero.ctaSecondaryTo, APPROVED_LANDING_DESTINATIONS.heroSecondary),
+    },
+    finalCta: {
+      ...finalCta,
+      primaryTo: allowlisted(finalCta.primaryTo, DEFAULT_LANDING_CONFIG.finalCta.primaryTo, APPROVED_LANDING_DESTINATIONS.register),
+      secondaryTo: allowlisted(finalCta.secondaryTo, DEFAULT_LANDING_CONFIG.finalCta.secondaryTo, APPROVED_LANDING_DESTINATIONS.demo),
+    },
+    footer: {
+      ...footer,
+      links: (footer.links || []).map((item) => item.action === "support" ? { ...item, to: undefined } : {
+        ...item,
+        to: APPROVED_LANDING_DESTINATIONS.footer[item.id] || DEFAULT_LANDING_CONFIG.footer.links.find((candidate) => candidate.id === item.id)?.to || "/",
+      }),
+    },
+  };
+}
+
 export function getLandingConfig() {
   const saved = read(KEYS.landing, null);
   if (!saved) return DEFAULT_LANDING_CONFIG;
@@ -273,7 +326,7 @@ export function getLandingConfig() {
         : dflt.features,
     };
   });
-  return {
+  return sanitizeLandingDestinations({
     ...DEFAULT_LANDING_CONFIG,
     ...saved,
     contentVersion: DEFAULT_LANDING_CONFIG.contentVersion,
@@ -331,11 +384,12 @@ export function getLandingConfig() {
     },
     pricing: upgradePricingCopy ? DEFAULT_LANDING_CONFIG.pricing : mergedPricing,
     plans,
-  };
+  });
 }
 export function saveLandingConfig(cfg) {
-  write(KEYS.landing, cfg);
-  return cfg;
+  const safeConfig = sanitizeLandingDestinations(cfg);
+  write(KEYS.landing, safeConfig);
+  return safeConfig;
 }
 export function resetLandingConfig() {
   localStorage.removeItem(KEYS.landing);

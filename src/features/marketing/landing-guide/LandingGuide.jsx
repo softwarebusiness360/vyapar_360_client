@@ -111,14 +111,14 @@ export default function LandingGuide({
           ref={launcherRef}
           type="button"
           onClick={openGuide}
+          aria-label="Open automated guide"
           aria-expanded="false"
           aria-haspopup="dialog"
           aria-controls="landing-guide-panel"
-          className={`fixed bottom-5 left-5 right-auto z-50 h-14 rounded-full bg-gradient-to-r from-brand to-fuchsia-500 pl-4 pr-5 text-white shadow-glow inline-flex items-center gap-2 border border-white/10 backdrop-blur transition-[transform,opacity] hover:-translate-y-0.5 active:translate-y-0 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base motion-reduce:transition-none lg:left-auto lg:right-5 ${showDesktopLauncher ? "lg:opacity-100 lg:pointer-events-auto" : "lg:opacity-0 lg:pointer-events-none"}`}
+          className={`fixed bottom-5 left-5 right-auto z-50 grid h-14 w-14 place-items-center rounded-full border border-white/10 bg-gradient-to-r from-brand to-fuchsia-500 p-0 text-white shadow-glow backdrop-blur transition-[transform,opacity] hover:-translate-y-0.5 active:translate-y-0 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base motion-reduce:transition-none lg:left-auto lg:right-5 ${showDesktopLauncher ? "lg:opacity-100 lg:pointer-events-auto" : "lg:opacity-0 lg:pointer-events-none"}`}
           data-testid="landing-guide-launcher"
         >
-          <MessageCircle className="h-5 w-5" aria-hidden="true" />
-          <span className="font-medium">Need help?</span>
+          <Bot className="h-6 w-6" aria-hidden="true" />
         </button>
       )}
 

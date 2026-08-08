@@ -136,6 +136,27 @@ test("lets CMS configuration enable the public billing toggle", async () => {
   expect(byTestId("pricing-billing-toggle")).not.toBeNull();
 });
 
+test("round-trips CMS brand and section copy through the public landing surface", async () => {
+  saveLandingConfig({
+    ...DEFAULT_LANDING_CONFIG,
+    brand: { ...DEFAULT_LANDING_CONFIG.brand, name: "Local Brand" },
+    features: { ...DEFAULT_LANDING_CONFIG.features, title: "CMS feature heading" },
+    businessTypes: { ...DEFAULT_LANDING_CONFIG.businessTypes, title: "CMS business heading" },
+    faqSection: { ...DEFAULT_LANDING_CONFIG.faqSection, title: "CMS FAQ heading" },
+    finalCta: { ...DEFAULT_LANDING_CONFIG.finalCta, title: "CMS final heading" },
+    footer: { ...DEFAULT_LANDING_CONFIG.footer, description: "CMS footer description" },
+  });
+
+  await mountLanding();
+  expect(container.querySelector("header").textContent).toContain("Local Brand");
+  expect(container.querySelector("footer").textContent).toContain("Local Brand");
+  expect(container.querySelector("footer").textContent).toContain("CMS footer description");
+  expect(byTestId("features-title").textContent).toContain("CMS feature heading");
+  expect(byTestId("business-types-title").textContent).toContain("CMS business heading");
+  expect(byTestId("faq-title").textContent).toContain("CMS FAQ heading");
+  expect(byTestId("final-cta-title").textContent).toContain("CMS final heading");
+});
+
 test("answers the six primary launch objections without generic pricing questions", async () => {
   await mountLanding();
 

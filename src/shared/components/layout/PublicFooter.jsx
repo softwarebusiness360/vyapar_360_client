@@ -6,13 +6,13 @@ import { APP_CONFIG } from "@/config/appConfig";
 
 const DEFAULT_FOOTER = { description: "Take your local business online.", links: [], copyrightSuffix: "Built for local businesses." };
 
-export default function PublicFooter({ footer = DEFAULT_FOOTER }) {
+export default function PublicFooter({ footer = DEFAULT_FOOTER, brand = {} }) {
   const openSupport = () => window.dispatchEvent(new CustomEvent("vyapar360:open-support"));
   return (
     <footer className="border-t border-line mt-24">
       <Container className="py-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
-          <Logo size="sm" />
+          <Logo size="sm" name={brand.name} logoUrl={brand.logoUrl} />
           <p className="mt-3 text-sm text-ink-secondary max-w-sm">
             {footer.description}
           </p>
@@ -27,7 +27,7 @@ export default function PublicFooter({ footer = DEFAULT_FOOTER }) {
       </Container>
       <div className="border-t border-line">
         <Container className="py-5 text-xs text-ink-muted flex items-center justify-between">
-          <span>© {new Date().getFullYear()} {APP_CONFIG.companyName}. {footer.copyrightSuffix}</span>
+          <span>© {new Date().getFullYear()} {brand.name || APP_CONFIG.companyName}. {footer.copyrightSuffix}</span>
         </Container>
       </div>
     </footer>

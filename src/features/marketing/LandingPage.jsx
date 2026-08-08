@@ -811,7 +811,7 @@ export default function LandingPage() {
         </Container>
       </Section>
 
-      <PublicFooter footer={footer} />
+      <PublicFooter footer={footer} brand={cfg.brand} />
       <LandingGuide />
     </div>
   );

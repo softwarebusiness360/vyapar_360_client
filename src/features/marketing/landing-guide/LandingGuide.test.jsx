@@ -40,9 +40,12 @@ test("renders a labelled closed launcher without a free-text field", async () =>
   await mount();
   const launcher = byTestId("landing-guide-launcher");
   expect(launcher.tagName).toBe("BUTTON");
+  expect(launcher.getAttribute("aria-label")).toBe("Open automated guide");
   expect(launcher.getAttribute("aria-haspopup")).toBe("dialog");
   expect(launcher.className).toMatch(/bottom-5.*left-5.*right-auto.*lg:left-auto.*lg:right-5/);
-  expect(launcher.className).toMatch(/h-14.*bg-gradient-to-r.*from-brand.*to-fuchsia-500/);
+  expect(launcher.className).toMatch(/h-14.*w-14.*rounded-full.*bg-gradient-to-r.*from-brand.*to-fuchsia-500/);
+  expect(launcher.querySelector(".lucide-bot")).not.toBeNull();
+  expect(launcher.textContent).not.toContain("Need help?");
   expect(container.querySelector("input, textarea")).toBeNull();
 });
 
