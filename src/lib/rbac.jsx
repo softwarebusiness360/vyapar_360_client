@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { evaluateRoute } from "../app/routes/routePolicy";
+import { resolveVendorCapability } from "@/domain/vendorCapabilities";
 
 /**
  * Route guards that enforce role-based access at the URL level.
@@ -34,4 +35,11 @@ export function RequirePermission({ perm, feature, children, fallback = "/dashbo
   if (isOwner) return children;
   const decision = evaluateRoute({ guard: perm }, { kind: "employee", permissions: employee?.permissions || {} });
   return decision.outcome === "allow" ? children : <Navigate to={fallback || decision.to} replace />;
+}
+
+export function RequireCapability({ capability, permission, children, fallback = "/dashboard" }) {
+  const { vendor, employee, loading, isOwner } = useAuth();
+  if (loading) return null;
+  if (!resolveVendorCapability({ vendor, employee, isOwner, capability, permission })) return <Navigate to={fallback} replace />;
+  return children;
 }

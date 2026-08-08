@@ -2,27 +2,27 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 
 const CartContext = createContext(null);
 
-const KEY = (slug) => `vyapar360.cart.${slug}`;
+const KEY = (slug, tableId) => `vyapar360.cart.${slug}.${tableId || "counter"}`;
 
-export function CartProvider({ vendorSlug, children }) {
+export function CartProvider({ vendorSlug, tableId = null, children }) {
   const [items, setItems] = useState([]);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     if (!vendorSlug) return;
     try {
-      const raw = localStorage.getItem(KEY(vendorSlug));
+      const raw = localStorage.getItem(KEY(vendorSlug, tableId)) || (!tableId ? localStorage.getItem(`vyapar360.cart.${vendorSlug}`) : null);
       setItems(raw ? JSON.parse(raw) : []);
     } catch {
       setItems([]);
     }
     setHydrated(true);
-  }, [vendorSlug]);
+  }, [vendorSlug, tableId]);
 
   useEffect(() => {
     if (!vendorSlug || !hydrated) return;
-    localStorage.setItem(KEY(vendorSlug), JSON.stringify(items));
-  }, [items, vendorSlug, hydrated]);
+    localStorage.setItem(KEY(vendorSlug, tableId), JSON.stringify(items));
+  }, [items, vendorSlug, tableId, hydrated]);
 
   const add = (item) => {
     setItems((prev) => {
@@ -52,7 +52,7 @@ export function CartProvider({ vendorSlug, children }) {
   const total = subtotal + tax;
 
   return (
-    <CartContext.Provider value={{ items, add, remove, increment, decrement, clear, subtotal, tax, total, count }}>
+    <CartContext.Provider value={{ items, add, remove, increment, decrement, clear, subtotal, tax, total, count, tableId }}>
       {children}
     </CartContext.Provider>
   );

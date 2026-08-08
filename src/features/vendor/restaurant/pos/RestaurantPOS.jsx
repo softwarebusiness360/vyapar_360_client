@@ -3,11 +3,17 @@ import { Check, Search } from "lucide-react";
 import { toast } from "sonner";
 import { createOrder } from "@/data/orderRepository";
 import { formatINR } from "@/lib/utils";
+import { isValidPhone, sanitizePhoneInput } from "@/shared/validation/phone";
+import { normalizeOrderMode } from "@/domain/restaurantOrders";
 
-export default function RestaurantPOS({ storefront, employee, vendorId }) {
+export default function RestaurantPOS({ storefront, employee, vendor, vendorId }) {
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState([]);
   const [completed, setCompleted] = useState(null);
+  const mode = normalizeOrderMode(vendor?.orderMode);
+  const [source, setSource] = useState(mode === "counter" ? "counter" : mode === "table" ? "table" : "");
+  const [tableId, setTableId] = useState("");
+  const [customer, setCustomer] = useState({ name: "", phone: "" });
   const items = (storefront.items || []).filter(
     (item) => item.available && item.name.toLowerCase().includes(query.toLowerCase())
   );
@@ -22,11 +28,20 @@ export default function RestaurantPOS({ storefront, employee, vendorId }) {
 
   const place = () => {
     if (!cart.length) return toast.error("Add at least one item");
+    if (!source) return toast.error("Choose Counter or Table");
+    const table = (vendor?.tables || []).find((entry) => entry.id === tableId && entry.storefrontId === storefront.id);
+    if (source === "table" && !table) return toast.error("Choose a valid table");
+    if (customer.phone && !isValidPhone(customer.phone)) return toast.error("Enter a valid phone number");
+    try {
     const order = createOrder({
       vendorId,
       storefrontId: storefront.id,
       employeeId: employee?.id || null,
-      customer: { name: "Walk-in", phone: "" },
+      customer: { name: customer.name.trim() || "Walk-in", phone: customer.phone.trim() },
+      source,
+      channel: "walk_in",
+      tableId: table?.id || null,
+      tableLabel: table?.label || null,
       items: cart,
       subtotal: total,
       tax: 0,
@@ -36,6 +51,7 @@ export default function RestaurantPOS({ storefront, employee, vendorId }) {
     setCompleted(order);
     setCart([]);
     toast.success(`Order ${order.code} placed`);
+    } catch (error) { toast.error(error?.message || "Could not create the order. Try again."); }
   };
 
   if (completed) return (
@@ -68,6 +84,10 @@ export default function RestaurantPOS({ storefront, employee, vendorId }) {
         <h2 className="font-display text-lg">Cart</h2>
         {cart.map((item) => <div key={item.id}>{item.name} × {item.qty}</div>)}
         <div className="mt-4">{formatINR(total)}</div>
+        {mode === "both" && <fieldset className="mt-4"><legend className="text-sm mb-2">Order source</legend><div className="flex gap-4">{["counter", "table"].map((value) => <label key={value} className="min-h-[44px] flex items-center gap-2"><input type="radio" name="source" value={value} checked={source === value} onChange={() => setSource(value)} data-testid={`order-source-${value}`} /> {value === "counter" ? "Counter" : "Table"}</label>)}</div></fieldset>}
+        {source === "table" && <label className="block mt-3 text-sm">Table<select className="input-field mt-1" value={tableId} onChange={(event) => setTableId(event.target.value)} data-testid="new-order-table"><option value="">Choose a table</option>{(vendor?.tables || []).filter((table) => table.storefrontId === storefront.id).map((table) => <option key={table.id} value={table.id}>{table.label}</option>)}</select></label>}
+        <label className="block mt-3 text-sm">Customer name (optional)<input className="input-field mt-1" value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} data-testid="new-order-customer-name" /></label>
+        <label className="block mt-3 text-sm">Phone (optional)<input className="input-field mt-1" value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: sanitizePhoneInput(event.target.value) })} data-testid="new-order-customer-phone" /></label>
         <button className="btn-primary w-full mt-4" data-testid="pos-place-order-btn" onClick={place}>Place order</button>
       </div>
     </div>

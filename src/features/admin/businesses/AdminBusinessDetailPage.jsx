@@ -11,6 +11,7 @@ export default function AdminBusinessDetailPage() {
   const { vendorId } = useParams();
   const nav = useNavigate();
   const [refresh, setRefresh] = useState(0);
+  const [capabilityError, setCapabilityError] = useState("");
   const vendor = useMemo(() => getVendorById(vendorId), [vendorId, refresh]);
   const orders = useMemo(() => (vendor ? getOrders(vendor.id) : []), [vendor]);
   const bookings = useMemo(() => (vendor ? getBookings(vendor.id) : []), [vendor]);
@@ -31,6 +32,16 @@ export default function AdminBusinessDetailPage() {
   const gmv = isRestaurant
     ? orders.filter((o) => o.status !== "cancelled").reduce((s, o) => s + o.total, 0)
     : bookings.filter((b) => b.status !== "cancelled").reduce((s, b) => s + (b.service?.price || 0), 0);
+  const toggleCapability = (key) => {
+    setCapabilityError("");
+    try {
+      saveVendor({ ...vendor, capabilities: { ...vendor.capabilities, [key]: !vendor.capabilities?.[key] } });
+      setRefresh((value) => value + 1);
+      toast.success("Capability updated");
+    } catch (error) {
+      setCapabilityError(error?.message || "Could not update capability. Try again.");
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -143,6 +154,20 @@ export default function AdminBusinessDetailPage() {
                 <span>Insights: <span className="text-ink-secondary">{vendor.planConfig.insights}</span></span>
               </div>
             )}
+          </div>
+          <div className="rounded-lg bg-bg-elevated border border-line p-4">
+            <div className="text-[11px] uppercase tracking-widest text-ink-muted mb-3">Business capabilities</div>
+            {capabilityError && <p role="alert" className="text-sm text-red-400 mb-3">{capabilityError}</p>}
+            <div className="grid sm:grid-cols-2 gap-2">
+              {[{ key: "insights", label: "Insights" }, { key: "stores", label: "Stores" }, { key: "team", label: "Team" }, { key: "tableOrdering", label: "Table ordering" }].map(({ key, label }) => (
+                <label key={key} className="flex min-h-[44px] items-center gap-3 cursor-pointer">
+                  <button type="button" role="switch" aria-checked={!!vendor.capabilities?.[key]} onClick={() => toggleCapability(key)} data-testid={`admin-capability-${key}`} className={`relative h-6 w-11 rounded-full ${vendor.capabilities?.[key] ? "bg-brand" : "bg-bg-surface border border-line"}`}>
+                    <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${vendor.capabilities?.[key] ? "left-6" : "left-1"}`} />
+                  </button>
+                  <span className="text-sm">{label}</span>
+                </label>
+              ))}
+            </div>
           </div>
           <div className="rounded-lg bg-bg-elevated border border-line p-4">
             <div className="text-[11px] uppercase tracking-widest text-ink-muted mb-3">Features</div>

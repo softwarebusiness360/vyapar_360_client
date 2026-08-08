@@ -1,5 +1,7 @@
 import { uid } from "../lib/utils";
 import { read, write, remove, STORAGE_KEYS as KEYS } from "./storage";
+import { normalizeVendorCapabilities } from "../domain/vendorCapabilities";
+import { normalizeOrderMode } from "../domain/restaurantOrders";
 
 export const PRODUCT_STATES = [
   { id: "available",     label: "Available",     tone: "success",  canOrder: true  },
@@ -98,7 +100,7 @@ export function withDefaults(vendor) {
   if (!Array.isArray(storefronts) || storefronts.length === 0) {
     if (vendor.slug || vendor.name) {
       storefronts = [{
-        id: vendor._legacyStorefrontId || uid("sf"),
+        id: vendor._legacyStorefrontId || `${vendor.id || uid("vendor")}-primary`,
         slug: vendor.slug,
         name: vendor.name,
         businessType: vendor.businessType,
@@ -152,6 +154,9 @@ export function withDefaults(vendor) {
     })),
     plan: defaultPlan,
     features: defaultFeatures,
+    capabilities: normalizeVendorCapabilities(vendor.capabilities, vendor.businessType || storefronts[0]?.businessType),
+    orderMode: normalizeVendorCapabilities(vendor.capabilities, vendor.businessType || storefronts[0]?.businessType).tableOrdering ? normalizeOrderMode(vendor.orderMode) : "counter",
+    tables: Array.isArray(vendor.tables) ? vendor.tables.filter((table) => table?.id && table?.storefrontId) : [],
     planConfig: matrixCfg, // Read-only convenience — resolved limits + entitlements
     // Keep back-compat facades for old code paths (mirror storefronts[0]):
     checkoutFields: { ...DEFAULT_CHECKOUT_FIELDS, ...(storefronts[0]?.checkoutFields || vendor.checkoutFields || {}) },

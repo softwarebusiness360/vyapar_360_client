@@ -13,6 +13,7 @@ import StoreSettingsPage from "@/features/vendor/common/storefronts/StoreSetting
 import StorefrontsPage from "@/features/vendor/common/storefronts/StorefrontsPage";
 import OrdersPage from "@/features/vendor/restaurant/orders/OrdersPage";
 import POSPage from "@/features/vendor/common/pos/POSPage";
+import LegacyPOSRoute from "@/features/vendor/common/pos/LegacyPOSRoute";
 import BookingsPage from "@/features/vendor/salon/bookings/BookingsPage";
 import TeamPage from "@/features/vendor/common/team/TeamPage";
 import DiscoverPage from "@/features/customer/common/discovery/DiscoverPage";
@@ -34,7 +35,7 @@ import AdminPlansPage from "@/features/admin/plans/AdminPlansPage";
 import AdminOnboardPage from "@/features/admin/onboarding/AdminOnboardPage";
 import AdminPersonaMatrixPage from "@/features/admin/personas/AdminPersonaMatrixPage";
 import NotFoundPage from "@/pages/NotFoundPage";
-import { RequireOwner, RequirePermission } from "@/lib/rbac";
+import { RequireCapability, RequireOwner, RequirePermission } from "@/lib/rbac";
 import { RedirectIfAdmin, RedirectIfAuthed, RequireAdmin, RequireAuth } from "./routeGuards";
 
 export const routeDefinitions = [
@@ -50,14 +51,15 @@ export const routeDefinitions = [
     element: <RequireAuth requireOnboarded><VendorDashboardLayout /></RequireAuth>,
     children: [
       { id: "vendor-overview", index: true, guard: "owner", element: <RequireOwner><OverviewPage /></RequireOwner> },
-      { id: "vendor-pos", path: "pos", guard: "vendor-auth", element: <POSPage /> },
+      { id: "vendor-pos", path: "pos", guard: "vendor-auth", element: <LegacyPOSRoute /> },
       { id: "vendor-catalogue", path: "catalogue", guard: "editCatalogue", element: <RequirePermission perm="editCatalogue"><CataloguePage /></RequirePermission> },
       { id: "vendor-orders", path: "orders", guard: "takeOrders", element: <RequirePermission perm="takeOrders"><OrdersPage /></RequirePermission> },
+      { id: "vendor-new-order", path: "orders/new", guard: "takeOrders", element: <RequirePermission perm="takeOrders"><POSPage /></RequirePermission> },
       { id: "vendor-bookings", path: "bookings", guard: "takeBookings", element: <RequirePermission perm="takeBookings"><BookingsPage /></RequirePermission> },
-      { id: "vendor-insights", path: "insights", guard: "viewInsights", element: <RequirePermission perm="viewInsights"><InsightsPage /></RequirePermission> },
-      { id: "vendor-storefronts", path: "storefronts", guard: "owner", element: <RequireOwner><StorefrontsPage /></RequireOwner> },
-      { id: "vendor-storefront-detail", path: "storefronts/:sfId", guard: "owner", element: <RequireOwner><StorefrontsPage /></RequireOwner> },
-      { id: "vendor-team", path: "team", guard: "owner", element: <RequireOwner><TeamPage /></RequireOwner> },
+      { id: "vendor-insights", path: "insights", guard: "viewInsights", element: <RequireCapability capability="insights" permission="viewInsights"><InsightsPage /></RequireCapability> },
+      { id: "vendor-storefronts", path: "storefronts", guard: "owner", element: <RequireCapability capability="stores" permission="editCatalogue"><StorefrontsPage /></RequireCapability> },
+      { id: "vendor-storefront-detail", path: "storefronts/:sfId", guard: "owner", element: <RequireCapability capability="stores" permission="editCatalogue"><StorefrontsPage /></RequireCapability> },
+      { id: "vendor-team", path: "team", guard: "owner", element: <RequireCapability capability="team" permission="editCatalogue"><TeamPage /></RequireCapability> },
       { id: "vendor-settings", path: "settings", guard: "owner", element: <RequireOwner><StoreSettingsPage /></RequireOwner> },
       { id: "vendor-profile", path: "profile", guard: "vendor-auth", element: <VendorProfilePage /> },
     ],

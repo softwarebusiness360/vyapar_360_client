@@ -8,7 +8,7 @@ import BookingFlowPage from "./customer/salon/booking/BookingFlowPage";
 import AdminBusinessesPage from "./admin/businesses/AdminBusinessesPage";
 import { getOrders } from "@/data/orderRepository";
 import { getBookings } from "@/data/bookingRepository";
-import { getVendorBySlug } from "@/data/businessRepository";
+import { getVendorBySlug, saveVendor } from "@/data/businessRepository";
 import { seedIfNeeded } from "@/data/authRepository";
 
 let container;
@@ -42,7 +42,9 @@ afterEach(async () => {
 
 test("vendor restaurant POS creates an order through the UI", async () => {
   const storefront = { id: "sf-r", items: [{ id: "pizza", name: "Pizza", price: 200, available: true }] };
-  await render(<RestaurantPOS storefront={storefront} vendorId="restaurant-1" />);
+  const vendor = { id: "restaurant-1", email: "r@test", businessType: "restaurant", storefronts: [storefront], employees: [], orderMode: "counter", capabilities: { tableOrdering: true } };
+  saveVendor(vendor);
+  await render(<RestaurantPOS storefront={storefront} vendor={vendor} vendorId="restaurant-1" />);
   await click(container.querySelector('[data-testid="pos-item-pizza"]'));
   await click(container.querySelector('[data-testid="pos-place-order-btn"]'));
   expect(container.querySelector('[data-testid="restaurant-pos-complete"]')).not.toBeNull();

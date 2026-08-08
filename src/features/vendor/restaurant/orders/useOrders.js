@@ -9,7 +9,7 @@ import * as repository from "@/data/orderRepository";
 import { useAuth } from "../../../../lib/auth";
 
 export default function useOrders({ storefrontId } = {}) {
-  const { getOrders, updateOrderStatus, getAllowedStorefronts } = repository;
+  const { getOrders, updateOrderStatus, cancelOrder, completeTable, addOrderItems, getAllowedStorefronts } = repository;
   const { vendor, employee, refresh } = useAuth();
   const [tick, setTick] = useState(0);
 
@@ -42,5 +42,17 @@ export default function useOrders({ storefrontId } = {}) {
     [refresh],
   );
 
-  return { orders, setStatus, allowedStorefrontIds: scopedStoreIds };
+  const mutate = useCallback((operation, ...args) => {
+    const result = operation(...args);
+    setTick((value) => value + 1);
+    return result;
+  }, []);
+  return {
+    orders,
+    setStatus,
+    cancel: (id) => mutate(cancelOrder, id),
+    closeTable: (id) => mutate(completeTable, id),
+    appendItems: (id, items) => mutate(addOrderItems, id, items),
+    allowedStorefrontIds: scopedStoreIds,
+  };
 }

@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Copy, ExternalLink, Loader2, Check, X as XIcon } from "lucide-react";
 import { useAuth } from "../../../../lib/auth";
 import * as repository from "@/data/storefrontRepository";
 import { slugify } from "../../../../lib/utils";
+import { ORDER_MODES } from "@/domain/restaurantOrders";
+import { resizeTables } from "@/domain/restaurantTables";
+import { buildStorefrontUrl, createQrSvgDataUrl } from "@/domain/publicStoreUrls";
+import { getOrders } from "@/data/orderRepository";
 
 export default function StoreSettingsPage() {
   const { slugAvailable, DEFAULT_CHECKOUT_FIELDS, DEFAULT_BOOKING_FIELDS } = repository;
@@ -25,6 +29,9 @@ export default function StoreSettingsPage() {
       : { ...DEFAULT_BOOKING_FIELDS, ...(vendor.bookingFields || {}) }
   );
   const [busy, setBusy] = useState(false);
+  const [orderMode, setOrderMode] = useState(vendor.orderMode || "counter");
+  const [tableCount, setTableCount] = useState(String(vendor.tables?.length || 1));
+  const [tableError, setTableError] = useState("");
   const setField = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const storeUrl = `${window.location.origin}/store/${vendor.slug}`;
@@ -47,6 +54,18 @@ export default function StoreSettingsPage() {
     const patch = { ...form, slug: s };
     if (isRestaurant) patch.checkoutFields = fields;
     else patch.bookingFields = fields;
+    if (isRestaurant) {
+      if (!ORDER_MODES.includes(orderMode)) return toast.error("Choose a valid order mode");
+      if (!vendor.capabilities?.tableOrdering && orderMode !== "counter") return toast.error("Enable table ordering before choosing Table or Both mode");
+      patch.orderMode = orderMode;
+      if (["table", "both"].includes(orderMode) && vendor.capabilities?.tableOrdering) {
+        const count = Number(tableCount);
+        const result = resizeTables({ storefrontId: vendor.storefronts?.[0]?.id, count, tables: vendor.tables || [], orders: getOrders(vendor.id) });
+        if (!result.ok) { setTableError(result.error); setBusy(false); return; }
+        if (result.removed?.length && !window.confirm(`Remove ${result.removed.map(({ label }) => label).join(", ")}?`)) { setBusy(false); return; }
+        patch.tables = result.tables;
+      }
+    }
     updateVendor(patch);
     setTimeout(() => {
       setBusy(false);
@@ -131,6 +150,16 @@ export default function StoreSettingsPage() {
         </div>
       </div>
 
+      {isRestaurant && (
+        <div className="card-surface p-5 space-y-5" data-testid="restaurant-order-settings">
+          <div><h2 className="font-display text-lg font-medium">Restaurant ordering</h2><p className="text-sm text-ink-secondary">Choose how staff and guests identify orders.</p></div>
+          <fieldset><legend className="text-xs uppercase tracking-widest text-ink-muted mb-2">Order mode</legend><div className="grid sm:grid-cols-3 gap-2">{ORDER_MODES.map((mode) => { const disabled = mode !== "counter" && !vendor.capabilities?.tableOrdering; return <label key={mode} className={`min-h-[44px] rounded-lg border border-line px-3 flex items-center gap-2 ${disabled ? "opacity-50" : ""}`}><input type="radio" name="order-mode" disabled={disabled} checked={orderMode === mode} onChange={() => { setOrderMode(mode); setTableError(""); }} data-testid={`order-mode-${mode}`} /><span className="capitalize">{mode}</span></label>; })}</div>{!vendor.capabilities?.tableOrdering && <p className="mt-2 text-sm text-ink-secondary" role="status">Table and Both modes require the Platform Admin table-ordering capability.</p>}</fieldset>
+          {vendor.capabilities?.tableOrdering && ["table", "both"].includes(orderMode) && <label className="block max-w-xs text-sm">Number of tables<input type="number" min="1" step="1" className="input-field mt-1" value={tableCount} onChange={(event) => { setTableCount(event.target.value); setTableError(""); }} data-testid="table-count-input" />{tableError && <span role="alert" className="block mt-1 text-red-400">{tableError}</span>}</label>}
+        </div>
+      )}
+
+      <QrCard vendor={vendor} />
+
       {/* Customer fields config */}
       <div className="card-surface p-5">
         <div className="flex items-start justify-between gap-4">
@@ -203,6 +232,24 @@ export default function StoreSettingsPage() {
       </div>
     </div>
   );
+}
+
+function QrCard({ vendor }) {
+  const url = buildStorefrontUrl(window.location.origin, vendor.slug);
+  const [image, setImage] = useState(null);
+  const [qrError, setQrError] = useState("");
+  useEffect(() => { let active = true; createQrSvgDataUrl(url).then((value) => active && setImage(value)).catch(() => active && setQrError("Could not generate the store QR. Try again.")); return () => { active = false; }; }, [url]);
+  const download = () => {
+    if (!image) return toast.error("Set a public store URL first");
+    const anchor = document.createElement("a"); anchor.href = image; anchor.download = `${vendor.slug}-store.png`; anchor.click();
+  };
+  const print = () => {
+    if (!url) return toast.error("Set a public store URL first");
+    const popup = window.open("", "_blank");
+    if (!popup) return toast.error("Allow pop-ups to print the store QR");
+    popup.document.write(`<title>${vendor.name} store link</title><h1>${vendor.name}</h1><img alt="Store QR" src="${image}"><p>${url}</p>`); popup.document.close(); popup.print();
+  };
+  return <section className="card-surface p-5" data-testid="general-store-qr"><h2 className="font-display text-lg">General store QR</h2><p className="mt-1 text-sm text-ink-secondary">This link opens the store and does not assign a table.</p>{image ? <img src={image} alt={`QR for ${vendor.name}`} className="mt-4 w-48 h-48 bg-white" /> : <p role="status" className="mt-4 text-sm text-ink-secondary">{qrError || (url ? "Generating QR…" : "Set a public store URL to enable QR actions.")}</p>}<p className="mt-3 font-mono text-xs break-all">{url || "Unavailable"}</p><div className="mt-4 flex flex-wrap gap-2"><button className="btn-ghost min-h-[44px]" onClick={download} disabled={!image} data-testid="general-qr-download">Download image</button><button className="btn-primary min-h-[44px]" onClick={print} disabled={!image} data-testid="general-qr-print">Print</button></div></section>;
 }
 
 function Toggle({ label, checked, onChange, disabled, testid }) {

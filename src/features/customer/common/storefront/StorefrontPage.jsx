@@ -32,6 +32,7 @@ export default function StorefrontPage() {
   const { slug } = useParams();
   const [vendor, setVendor] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const tableId = new URLSearchParams(window.location.search).get("table");
 
   useEffect(() => {
     seedIfNeeded();
@@ -57,7 +58,7 @@ export default function StorefrontPage() {
   }
 
   return (
-    <CartProvider vendorSlug={vendor.slug}>
+    <CartProvider vendorSlug={vendor.slug} tableId={tableId}>
       <StorefrontContent vendor={vendor} />
     </CartProvider>
   );
@@ -469,7 +470,7 @@ function CartDrawer({ open, onClose, vendor, accentBg, accentClass }) {
             <button
               onClick={() => {
                 onClose();
-                nav(`/store/${vendor.slug}/checkout`);
+                nav(`/store/${vendor.slug}/checkout${window.location.search}`);
               }}
               className={`w-full text-white font-medium py-3 rounded-xl inline-flex items-center justify-center gap-2 ${accentBg} transition-transform hover:-translate-y-0.5`}
               data-testid="cart-checkout-btn"

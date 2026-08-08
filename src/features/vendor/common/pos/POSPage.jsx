@@ -29,7 +29,7 @@ export default function POSPage() {
           </select>
         )}
       </header>
-      <Experience storefront={storefront} employee={employee} vendorId={vendor.id} />
+      <Experience storefront={storefront} employee={employee} vendor={vendor} vendorId={vendor.id} />
     </div>
   );
 }

@@ -10,8 +10,10 @@ import { WORKFORCE_STORAGE_KEY } from "./workforceRepository";
 beforeEach(() => localStorage.clear());
 
 test("restaurant order flow preserves persisted shape and status transitions", () => {
-  const order = createOrder({ vendorId: "restaurant-1", total: 420, channel: "online" });
-  expect(getOrders("restaurant-1")[0]).toMatchObject({ id: order.id, total: 420, status: "pending", channel: "online" });
+  saveVendor({ id: "restaurant-1", email: "r@test", businessType: "restaurant", storefronts: [{ id: "sf-1", businessType: "restaurant" }], employees: [], capabilities: { tableOrdering: true }, orderMode: "counter" });
+  const order = createOrder({ vendorId: "restaurant-1", storefrontId: "sf-1", items: [{ id: "meal", name: "Meal", price: 400, qty: 1 }], channel: "online" });
+  expect(getOrders("restaurant-1")[0]).toMatchObject({ id: order.id, total: 420, status: "new", channel: "online" });
+  expect(updateOrderStatus(order.id, "preparing").status).toBe("preparing");
   expect(updateOrderStatus(order.id, "ready").status).toBe("ready");
 });
 

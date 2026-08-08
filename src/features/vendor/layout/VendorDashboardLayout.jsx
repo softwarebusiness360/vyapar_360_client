@@ -19,6 +19,7 @@ import {
 import Logo from "@/shared/components/branding/Logo";
 import ThemeToggle from "@/shared/components/controls/ThemeToggle";
 import { useAuth } from "../../../lib/auth";
+import { resolveVendorCapability } from "@/domain/vendorCapabilities";
 
 export default function VendorDashboardLayout() {
   const { vendor, employee, role, isOwner, logout } = useAuth();
@@ -27,13 +28,12 @@ export default function VendorDashboardLayout() {
 
   const isRestaurant = vendor?.businessType === "restaurant";
   const perms = employee?.permissions || {};
+  const hasCapability = (capability, permission) => resolveVendorCapability({ vendor, employee, isOwner, capability, permission });
 
   const items = [];
   // Owner sees everything; employee sees only permitted tabs
-  if (isOwner) {
-    items.push({ to: "/dashboard", icon: LayoutDashboard, label: "Overview", end: true, testid: "nav-overview" });
-  }
-  items.push({ to: "/dashboard/pos", icon: Zap, label: "POS", testid: "nav-pos" });
+  if (isOwner) items.push({ to: "/dashboard", icon: LayoutDashboard, label: isRestaurant ? "Dashboard" : "Overview", end: true, testid: "nav-overview" });
+  if (!isRestaurant) items.push({ to: "/dashboard/pos", icon: Zap, label: "POS", testid: "nav-pos" });
   if (isOwner || perms.editCatalogue) {
     items.push({ to: "/dashboard/catalogue", icon: Package, label: isRestaurant ? "Menu" : "Services", testid: "nav-catalogue" });
   }
@@ -43,20 +43,18 @@ export default function VendorDashboardLayout() {
   if (isOwner || perms.takeBookings) {
     if (!isRestaurant) items.push({ to: "/dashboard/bookings", icon: CalendarClock, label: "Bookings", testid: "nav-bookings" });
   }
-  if (isOwner || perms.viewInsights) {
+  if (hasCapability("insights", "viewInsights")) {
     items.push({ to: "/dashboard/insights", icon: BarChart3, label: "Insights", testid: "nav-insights" });
   }
-  if (isOwner && vendor?.features?.multiStore) {
+  if (hasCapability("stores", "editCatalogue")) {
     items.push({ to: "/dashboard/storefronts", icon: Store, label: "Storefronts", testid: "nav-storefronts" });
   }
-  if (isOwner && vendor?.features?.employees) {
+  if (hasCapability("team", "editCatalogue")) {
     items.push({ to: "/dashboard/team", icon: Users, label: "Team", testid: "nav-team" });
   }
   if (isOwner) {
     items.push({ to: "/dashboard/settings", icon: Settings, label: "Store settings", testid: "nav-settings" });
   }
-  // Profile is available for every signed-in role
-  items.push({ to: "/dashboard/profile", icon: UserCircle, label: "My profile", testid: "nav-profile" });
 
   const doLogout = () => {
     logout();
@@ -111,6 +109,7 @@ export default function VendorDashboardLayout() {
           </nav>
 
           <div className="p-3 border-t border-line space-y-1">
+            <NavLink to="/dashboard/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-secondary hover:text-ink-primary" data-testid="account-profile-link"><UserCircle className="h-4 w-4" /> Profile</NavLink>
             <a
               href={`/store/${vendor?.slug}`}
               target="_blank"
@@ -155,6 +154,7 @@ export default function VendorDashboardLayout() {
                 ))}
               </nav>
               <div className="p-3 border-t border-line space-y-1">
+                <NavLink to="/dashboard/profile" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-secondary hover:text-ink-primary" data-testid="mobile-account-profile-link"><UserCircle className="h-4 w-4" /> Profile</NavLink>
                 <a href={`/store/${vendor?.slug}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-secondary hover:bg-white/5">
                   <ExternalLink className="h-4 w-4" /> View storefront
                 </a>

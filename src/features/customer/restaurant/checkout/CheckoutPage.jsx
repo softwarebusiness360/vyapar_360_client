@@ -7,11 +7,14 @@ import * as repository from "@/data/orderRepository";
 import { formatINR } from "../../../../lib/utils";
 import Logo from "@/shared/components/branding/Logo";
 import { isValidPhone, sanitizePhoneInput } from "@/shared/validation/phone";
+import { resolveTableContext } from "@/domain/publicStoreUrls";
+import { normalizeOrderMode } from "@/domain/restaurantOrders";
 
 export default function CheckoutPage() {
   const { getVendorBySlug, createOrder, seedIfNeeded, DEFAULT_CHECKOUT_FIELDS } = repository;
   const { slug } = useParams();
   const [vendor, setVendor] = useState(null);
+  const tableId = new URLSearchParams(window.location.search).get("table");
 
   useEffect(() => {
     seedIfNeeded();
@@ -30,14 +33,14 @@ export default function CheckoutPage() {
     );
   }
   return (
-    <CartProvider vendorSlug={vendor.slug}>
+    <CartProvider vendorSlug={vendor.slug} tableId={tableId}>
       <CheckoutContent vendor={vendor} />
     </CartProvider>
   );
 }
 
 function CheckoutContent({ vendor }) {
-  const { items, subtotal, tax, total, clear } = useCart();
+  const { items, subtotal, tax, total, clear, tableId } = useCart();
   const nav = useNavigate();
   const cfg = vendor.checkoutFields || repository.DEFAULT_CHECKOUT_FIELDS;
   const enabledKeys = useMemo(
@@ -48,6 +51,8 @@ function CheckoutContent({ vendor }) {
     enabledKeys.reduce((acc, k) => ({ ...acc, [k]: "" }), {})
   );
   const [busy, setBusy] = useState(false);
+  const tableContext = resolveTableContext(vendor, tableId);
+  const [continueWithoutTable, setContinueWithoutTable] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const setPhone = (e) => setForm((f) => ({ ...f, phone: sanitizePhoneInput(e.target.value) }));
 
@@ -63,6 +68,8 @@ function CheckoutContent({ vendor }) {
     if (form.phone && !isValidPhone(form.phone)) {
       return toast.error("Enter a valid phone number");
     }
+    if (!tableContext.ok && !continueWithoutTable) return toast.error(tableContext.error);
+    if (!tableId && normalizeOrderMode(vendor.orderMode) === "table") return toast.error("Scan a valid table QR or ask staff for help");
     setBusy(true);
     setTimeout(() => {
       const customer = {
@@ -70,8 +77,12 @@ function CheckoutContent({ vendor }) {
         phone: (form.phone || "").trim(),
         address: (form.address || "").trim(),
       };
-      const order = repository.createOrder({
+      try { const order = repository.createOrder({
         vendorId: vendor.id,
+        storefrontId: vendor.storefronts?.[0]?.id,
+        source: tableContext.ok && tableContext.table && !continueWithoutTable ? "table" : "counter",
+        tableId: tableContext.ok && tableContext.table && !continueWithoutTable ? tableContext.table.id : null,
+        tableLabel: tableContext.ok && tableContext.table && !continueWithoutTable ? tableContext.table.label : null,
         customer,
         items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })),
         subtotal,
@@ -81,6 +92,7 @@ function CheckoutContent({ vendor }) {
       });
       clear();
       nav(`/store/${vendor.slug}/order/${order.id}`);
+      } catch (error) { setBusy(false); toast.error(error?.message || "Could not place your order. Try again."); }
     }, 500);
   };
 
@@ -102,6 +114,8 @@ function CheckoutContent({ vendor }) {
         <h1 className="mt-2 text-3xl sm:text-4xl font-display font-medium tracking-tighter" data-testid="checkout-title">
           Confirm your order
         </h1>
+        {tableContext.ok && tableContext.table && !continueWithoutTable && <div className="mt-4 rounded-lg border border-line p-3" data-testid="checkout-table-context">Ordering for <strong>{tableContext.table.label}</strong>. This table cannot be changed.</div>}
+        {!tableContext.ok && <div role="alert" className="mt-4 rounded-lg border border-red-500/40 p-3"><p>{tableContext.error}</p>{normalizeOrderMode(vendor.orderMode) === "both" ? <button className="btn-ghost min-h-[44px] mt-2" onClick={() => setContinueWithoutTable(true)} data-testid="continue-without-table">Continue without table</button> : <p className="text-sm mt-2">Rescan the table QR or ask staff for help.</p>}</div>}
 
         <div className="mt-10 grid lg:grid-cols-5 gap-6">
           <div className="lg:col-span-3 card-surface p-6 space-y-5">
